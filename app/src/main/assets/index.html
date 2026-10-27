@@ -20,6 +20,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;letter-spacing:-.2px}
 .logo{width:30px;height:30px;border-radius:9px;background:var(--accent);color:var(--bg);display:grid;place-items:center}
 .logo .ic{width:18px;height:18px}
+.acts{display:flex}
 .round{width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
 .round:active{background:var(--card)}
 #searchbar{display:flex;gap:8px;align-items:center;height:44px}
@@ -146,7 +147,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <header id="top">
     <div class="bar" id="bar">
       <div class="brand"><span class="logo"><svg class="ic"><use href="#i-note"/></svg></span>USB Music</div>
-      <div>
+      <div class="acts">
         <button class="round" id="btnSearch" aria-label="Search"><svg class="ic"><use href="#i-search"/></svg></button>
         <button class="round" id="btnMenu" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button>
       </div>
@@ -337,7 +338,7 @@ function songRow(id, scope) {
   b.append(makeArt(id));
   const m = document.createElement('div'); m.className = 'meta';
   const a = document.createElement('div'); a.className = 't'; a.textContent = t[0];
-  const s = document.createElement('div'); s.className = 's'; s.textContent = sub(t) || t[1];
+  const s = document.createElement('div'); s.className = 's'; s.textContent = sub(t) || t[1].split('/').pop();
   m.append(a, s);
   const eq = document.createElement('span'); eq.className = 'eq'; eq.innerHTML = '<i></i><i></i><i></i>';
   b.append(m, eq);

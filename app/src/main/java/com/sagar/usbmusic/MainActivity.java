@@ -65,7 +65,7 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.HORIZONTAL);
         root.setBackgroundColor(BG);
-        root.setPadding(pad, dp(40), pad, dp(40));
+        root.setPadding(pad, dp(32), pad, dp(32));
         root.setGravity(Gravity.CENTER_VERTICAL);
 
         // ---- left: brand, address, status, buttons
@@ -86,7 +86,7 @@ public class MainActivity extends Activity {
         left.addView(brand);
 
         TextView headline = text("Play from your phone", 40, TEXT, true);
-        headline.setPadding(0, dp(32), 0, dp(4));
+        headline.setPadding(0, dp(24), 0, dp(4));
         left.addView(headline);
         left.addView(text("Scan the code, or open this address in your phone's browser.", 18, MUTED, false));
 
