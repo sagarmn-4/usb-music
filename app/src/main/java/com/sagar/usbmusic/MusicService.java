@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -60,8 +61,9 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private String scanLog = "";
 
     private final List<Track> queue = new ArrayList<>();
-    /** Folder the queue was built from, or null when it holds the whole library. */
-    private String scopeFolder;
+    /** What the queue was built from: "all", "folder", "album" or "artist" (relative to scopeRef). */
+    private String scopeKind = "all";
+    private Track scopeRef;
     private int qpos = -1;
     private Track current;
 
@@ -98,7 +100,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         notifications = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notifications.createNotificationChannel(
                 new NotificationChannel(CHANNEL, "Music", NotificationManager.IMPORTANCE_LOW));
-        startForeground(NOTIF_ID, buildNotification());
+        startForeground(NOTIF_ID, buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
 
         try {
             WifiManager wm = (WifiManager) getApplicationContext()
@@ -211,10 +214,11 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
 
     // ---- playback -------------------------------------------------------------------------
 
-    private void playId(int id, boolean folderScope) {
+    private void playId(int id, String scope) {
         if (id < 0 || id >= library.size()) return;
         Track t = library.get(id);
-        scopeFolder = folderScope ? t.folder : null;
+        scopeKind = scope == null ? "folder" : scope;
+        scopeRef = t;
         buildQueue(t);
         startTrack(t);
     }
@@ -223,7 +227,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private void buildQueue(Track first) {
         queue.clear();
         for (Track x : library) {
-            if (scopeFolder == null || x.folder.equals(scopeFolder)) queue.add(x);
+            if (inScope(x)) queue.add(x);
         }
         if (shuffle) {
             Collections.shuffle(queue);
@@ -231,6 +235,31 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             queue.add(0, first);
         }
         qpos = queue.indexOf(first);
+    }
+
+    private boolean inScope(Track x) {
+        Track r = scopeRef;
+        if (r == null || scopeKind.equals("all")) return true;
+        switch (scopeKind) {
+            case "album":
+                if (!r.album.isEmpty()) return x.album.equals(r.album) && x.folder.equals(r.folder);
+                break;
+            case "artist":
+                if (!r.primaryArtist().isEmpty()) return x.primaryArtist().equals(r.primaryArtist());
+                break;
+            default:
+                break;
+        }
+        return x.folder.equals(r.folder);
+    }
+
+    /** The track with this library index, or null. Safe to call from any thread. */
+    Track trackAt(final int id) {
+        return onMain(new Callable<Track>() {
+            @Override public Track call() {
+                return id >= 0 && id < library.size() ? library.get(id) : null;
+            }
+        });
     }
 
     private void startTrack(Track t) {
@@ -343,9 +372,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private void togglePlay() {
         if (current == null) {
             if (!library.isEmpty()) {
-                scopeFolder = null;
                 int start = shuffle ? (int) (Math.random() * library.size()) : 0;
-                playId(start, false);
+                playId(start, "all");
             }
             return;
         }
@@ -510,7 +538,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                                 .put("ip", WebServer.localIp()).put("port", port());
                     case "play":
                         lastError = "";
-                        playId(intArg(q, "id", -1), !"all".equals(q.get("scope")));
+                        playId(intArg(q, "id", -1), q.get("scope"));
                         break;
                     case "toggle":
                         togglePlay();

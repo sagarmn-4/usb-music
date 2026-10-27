@@ -6,8 +6,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -15,7 +18,6 @@
         android:label="USB Music"
         android:icon="@drawable/ic_launcher"
         android:banner="@drawable/banner"
-        android:requestLegacyExternalStorage="true"
         android:allowBackup="false">
 
         <activity
@@ -31,6 +33,7 @@
 
         <service
             android:name=".MusicService"
+            android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
 
         <receiver

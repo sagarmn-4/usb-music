@@ -26,6 +26,12 @@ final class Track {
         this.sortName = sortName;
     }
 
+    /** First credited artist, e.g. "A" for "A, B". Empty when the file has no artist tag. */
+    String primaryArtist() {
+        String[] parts = artist.split(",\\s|;");
+        return parts.length == 0 ? "" : parts[0].trim();
+    }
+
     Uri uri() {
         return isFile ? Uri.fromFile(new File(source)) : Uri.parse(source);
     }

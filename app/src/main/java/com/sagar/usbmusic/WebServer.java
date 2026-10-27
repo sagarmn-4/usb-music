@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 /** Minimal HTTP server: the phone web page plus a small command API. */
 final class WebServer {
@@ -31,7 +32,9 @@ final class WebServer {
 
     private final Context ctx;
     private final MusicService svc;
-    private final ExecutorService pool = Executors.newFixedThreadPool(6);
+    private final ExecutorService pool = Executors.newFixedThreadPool(10);
+    /** Cover decoding is slow, so only a few run at once and the control requests stay quick. */
+    private final Semaphore artSlots = new Semaphore(3);
     private ServerSocket socket;
     private volatile boolean running;
     private int port = -1;
@@ -134,12 +137,33 @@ final class WebServer {
 
     private void respond(OutputStream out, String path, Map<String, String> q) throws IOException {
         int status = 200;
+        String cache = "no-store";
         String type = "application/json; charset=utf-8";
         byte[] body;
         try {
             if (path.equals("/") || path.equals("/index.html")) {
                 type = "text/html; charset=utf-8";
                 body = readAsset("index.html");
+            } else if (path.equals("/art")) {
+                Track t = svc.trackAt(intArg(q.get("id")));
+                byte[] art = null;
+                if (t != null) {
+                    artSlots.acquireUninterruptibly();
+                    try {
+                        art = AlbumArt.get(ctx, t);
+                    } finally {
+                        artSlots.release();
+                    }
+                }
+                if (art == null) {
+                    status = 404;
+                    type = "text/plain; charset=utf-8";
+                    body = "No art".getBytes(StandardCharsets.UTF_8);
+                } else {
+                    type = "image/jpeg";
+                    cache = "max-age=86400";
+                    body = art;
+                }
             } else if (path.startsWith("/api/")) {
                 JSONObject json = svc.api(path.substring(5), q);
                 if (json == null) {
@@ -160,11 +184,19 @@ final class WebServer {
         String head = "HTTP/1.1 " + status + (status == 200 ? " OK" : " Error") + "\r\n"
                 + "Content-Type: " + type + "\r\n"
                 + "Content-Length: " + body.length + "\r\n"
-                + "Cache-Control: no-store\r\n"
+                + "Cache-Control: " + cache + "\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.ISO_8859_1));
         out.write(body);
         out.flush();
+    }
+
+    private static int intArg(String s) {
+        try {
+            return Integer.parseInt(s);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private byte[] readAsset(String name) throws IOException {
