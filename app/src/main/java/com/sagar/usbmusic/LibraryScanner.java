@@ -133,16 +133,16 @@ final class LibraryScanner {
                     while (c.moveToNext() && out.size() < MAX_TRACKS) {
                         String display = c.getString(1);
                         String title = c.getString(2);
-                        String base = display == null ? "Unknown" : display;
-                        int dot = base.lastIndexOf('.');
-                        if (dot > 0) base = base.substring(0, dot);
-                        if (title == null || title.isEmpty()) title = base;
+                        String fileBase = display == null ? "Unknown" : display;
+                        int dot = fileBase.lastIndexOf('.');
+                        if (dot > 0) fileBase = fileBase.substring(0, dot);
+                        if (title == null || title.isEmpty()) title = fileBase;
                         String rel = c.getString(3);
                         if (rel == null || rel.isEmpty() || rel.equals("/")) rel = "(top folder)";
                         while (rel.endsWith("/")) rel = rel.substring(0, rel.length() - 1);
                         Uri uri = ContentUris.withAppendedId(base, c.getLong(0));
                         out.add(new Track(title, rel, uri.toString(), false,
-                                clean(c.getString(4)), clean(c.getString(5)), base));
+                                clean(c.getString(4)), clean(c.getString(5)), fileBase));
                     }
                 }
                 log.append("MediaStore ").append(vol).append(": ").append(out.size() - before)
