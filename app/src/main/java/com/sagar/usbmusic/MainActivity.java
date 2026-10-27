@@ -202,7 +202,7 @@ public class MainActivity extends Activity {
         try {
             Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
             hints.put(EncodeHintType.MARGIN, 0);
-            hints.put(EncodeHintType.ERROR_CORRECTION_LEVEL, ErrorCorrectionLevel.M);
+            hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
             BitMatrix m = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints);
             int scale = Math.max(1, sizePx / m.getWidth());
             int w = m.getWidth() * scale, h = m.getHeight() * scale;
