@@ -202,13 +202,12 @@ final class WebServer {
     }
 
     /**
-     * The phone page. A copy pushed with adb to the app's files folder wins over the one built
+     * The phone page. A copy pushed with adb (see push-page.ps1) to the app's private files folder wins over the one built
      * into the APK, so the page can be changed without reinstalling the app.
      */
     private byte[] readAsset(String name) throws IOException {
-        File dir = ctx.getExternalFilesDir(null);
-        File override = dir == null ? null : new File(dir, name);
-        try (InputStream in = override != null && override.isFile()
+        File override = new File(ctx.getFilesDir(), name);
+        try (InputStream in = override.isFile()
                 ? new FileInputStream(override) : ctx.getAssets().open(name)) {
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
             byte[] chunk = new byte[8192];
