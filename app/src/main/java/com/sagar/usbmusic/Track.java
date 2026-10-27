@@ -1,4 +1,4 @@
-package com.sagar.usbmusic;
+﻿package com.sagar.usbmusic;
 
 import android.net.Uri;
 
@@ -10,12 +10,20 @@ final class Track {
     /** A file path, or a content:// URI when the track came from MediaStore. */
     final String source;
     final boolean isFile;
+    final String artist;
+    final String album;
+    /** File-name based key, so tracks keep their on-disk order whatever the tags say. */
+    final String sortName;
 
-    Track(String title, String folder, String source, boolean isFile) {
+    Track(String title, String folder, String source, boolean isFile,
+          String artist, String album, String sortName) {
         this.title = title;
         this.folder = folder;
         this.source = source;
         this.isFile = isFile;
+        this.artist = artist == null ? "" : artist;
+        this.album = album == null ? "" : album;
+        this.sortName = sortName;
     }
 
     Uri uri() {

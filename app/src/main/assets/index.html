@@ -22,6 +22,7 @@ summary .name{flex:1;overflow-wrap:anywhere;font-weight:600}
 summary .n{color:var(--muted);font-size:13px}
 summary .go{border:1px solid var(--line);background:var(--panel);color:var(--accent);border-radius:8px;padding:4px 10px}
 .row{display:block;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:var(--text);padding:11px 16px 11px 28px;font:inherit;overflow-wrap:anywhere}
+.row .sub{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 .row.cur{color:var(--accent);background:var(--panel)}
 #bar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
 #now{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -92,10 +93,11 @@ function renderList() {
   list.textContent = '';
   rows = [];
   const groups = new Map();
-  lib.tracks.forEach(([title, folder], id) => {
-    if (q && !title.toLowerCase().includes(q) && !folder.toLowerCase().includes(q)) return;
+  lib.tracks.forEach(([title, folder, artist, album], id) => {
+    const sub = [artist, album].filter(Boolean).join(' · ');
+    if (q && ![title, folder, sub].some(x => x.toLowerCase().includes(q))) return;
     if (!groups.has(folder)) groups.set(folder, []);
-    groups.get(folder).push([title, id]);
+    groups.get(folder).push([title, id, sub]);
   });
   const single = groups.size === 1;
   for (const [folder, items] of groups) {
@@ -108,9 +110,14 @@ function renderList() {
     go.onclick = e => { e.preventDefault(); play(items[0][1], 'folder'); };
     s.append(name, n, go);
     d.append(s);
-    for (const [title, id] of items) {
+    for (const [title, id, sub] of items) {
       const b = document.createElement('button');
       b.className = 'row'; b.textContent = title; b.dataset.id = id;
+      if (sub) {
+        const e = document.createElement('small');
+        e.className = 'sub'; e.textContent = sub;
+        b.append(e);
+      }
       b.onclick = () => play(id, 'folder');
       d.append(b);
       rows.push(b);
@@ -137,7 +144,7 @@ function applyState(s) {
   $('#count').textContent = s.scanning ? 'scanning…' : s.count + ' songs';
   $('#err').textContent = s.error || '';
   $('#now').textContent = s.title || (s.loading ? 'Loading…' : 'Nothing playing');
-  $('#fold').textContent = s.folder || '';
+  $('#fold').textContent = [s.artist, s.album].filter(Boolean).join(' · ') || s.folder || '';
   $('#toggle').textContent = s.playing ? '⏸' : '▶';
   $('#shuf').classList.toggle('on', s.shuffle);
   const rep = $('#rep');
