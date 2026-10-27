@@ -6,6 +6,8 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -199,8 +201,15 @@ final class WebServer {
         }
     }
 
+    /**
+     * The phone page. A copy pushed with adb to the app's files folder wins over the one built
+     * into the APK, so the page can be changed without reinstalling the app.
+     */
     private byte[] readAsset(String name) throws IOException {
-        try (InputStream in = ctx.getAssets().open(name)) {
+        File dir = ctx.getExternalFilesDir(null);
+        File override = dir == null ? null : new File(dir, name);
+        try (InputStream in = override != null && override.isFile()
+                ? new FileInputStream(override) : ctx.getAssets().open(name)) {
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
             byte[] chunk = new byte[8192];
             int n;
