@@ -5,11 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2a1018">
 <title>USB Music</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <style>
 :root{--bg:#0f0f0f;--card:#272727;--line:#2e2e2e;--text:#fff;--muted:#b3b3b3;--accent:#ff4e5b;--gray:#4a4a4a}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.4 Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 .ic{width:24px;height:24px;fill:currentColor;flex:none}
 .wrap{max-width:720px;margin:0 auto}
@@ -17,7 +20,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 /* top bar */
 #top{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#3a1420 0%,#1a0e12 70%,var(--bg) 100%);padding:max(10px,env(safe-area-inset-top)) 16px 0}
 .bar{display:flex;align-items:center;justify-content:space-between;height:44px}
-.brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;letter-spacing:-.2px}
+.brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;letter-spacing:-.4px}
 .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#ff6b6b,#ff1f4b);color:#fff;display:grid;place-items:center}
 .logo .ic{width:18px;height:18px}
 .acts{display:flex}
@@ -27,7 +30,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 #q{flex:1;height:40px;border-radius:20px;border:0;background:var(--card);color:var(--text);padding:0 16px;font-size:16px;outline:none}
 #chips{display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;scrollbar-width:none}
 #chips::-webkit-scrollbar{display:none}
-.chip{flex:none;height:34px;padding:0 16px;border-radius:17px;background:rgba(255,255,255,.12);color:var(--text);font-weight:500}
+.chip{flex:none;height:34px;padding:0 12px;border-radius:8px;background:rgba(255,255,255,.12);color:var(--text);font-size:14px;font-weight:500}
 .chip.on{background:var(--text);color:var(--bg)}
 #err{padding:6px 16px;color:#ff8a80;font-size:13px}
 #count{padding:0 16px 6px;color:var(--muted);font-size:13px}
@@ -36,14 +39,20 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 #view{padding:0 0 110px}
 #msg{padding:40px 24px;color:var(--muted);text-align:center}
 .actionrow{display:flex;gap:10px;padding:2px 16px 12px}
-.btn{height:42px;padding:0 22px;border-radius:21px;background:var(--text);color:var(--bg);font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.btn{height:40px;padding:0 20px;border-radius:20px;background:var(--text);color:var(--bg);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
 .btn.ghost{background:rgba(255,255,255,.14);color:var(--text)}
 .btn .ic{width:20px;height:20px}
-.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:7px 16px}
+.row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:8px 16px}
 .row:active{background:var(--card)}
 .row .meta{flex:1;min-width:0}
-.row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px}
-.row .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:13px}
+.row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px;font-weight:500;line-height:1.35}
+.row .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:14px;line-height:1.4}
+.row .dur{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;flex:none}
+.row .no{width:28px;flex:none;color:var(--muted);font-size:14px;text-align:center;font-variant-numeric:tabular-nums}
+.row.num .art{display:none}
+.row.cur .no{color:var(--accent)}
+.row.folder{border-bottom:1px solid var(--line);padding:12px 16px;margin:0 0 0;width:calc(100% - 0px)}
+.row.folder .art{width:56px;height:56px;border-radius:4px}
 .row.cur .t{color:var(--accent)}
 .row .art{width:48px;height:48px}
 .row.round-art .art{border-radius:50%}
@@ -56,8 +65,8 @@ body.playing .row.cur .eq i{animation:eq 0.9s ease-in-out infinite}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px 14px;padding:4px 16px}
 .card{text-align:left;min-width:0}
 .card .art{width:100%;border-radius:10px}
-.card .t{margin-top:8px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card .s{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .t{margin-top:8px;font-weight:500;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .s{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .more{height:1px}
 
 /* cover art placeholder + image */
@@ -74,7 +83,7 @@ body.playing .row.cur .eq i{animation:eq 0.9s ease-in-out infinite}
 #detail .head{padding:max(10px,env(safe-area-inset-top)) 8px 0}
 #detail .hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 24px 16px}
 #detail .hero .art{width:min(58vw,240px);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.45)}
-#detail h2{margin:16px 0 2px;font-size:22px;overflow-wrap:anywhere}
+#detail h2{margin:16px 0 2px;font-size:24px;font-weight:700;letter-spacing:-.3px;overflow-wrap:anywhere}
 #detail .sub{color:var(--muted);font-size:14px}
 #detail .actionrow{justify-content:center;padding-top:14px}
 
@@ -83,8 +92,8 @@ body.playing .row.cur .eq i{animation:eq 0.9s ease-in-out infinite}
   padding:8px 8px calc(8px + env(safe-area-inset-bottom)) 12px;display:flex;align-items:center;gap:12px;box-shadow:0 -6px 24px rgba(0,0,0,.4)}
 #mini .art{width:44px;height:44px}
 #mini .meta{flex:1;min-width:0;text-align:left}
-#mini .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#mini .s{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mini .t{font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mini .s{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #mini .prog{position:absolute;left:0;top:0;height:3px;background:var(--accent);width:0;border-radius:2px}
 #mini .round{width:44px;height:44px}
 
@@ -96,7 +105,7 @@ body.playing .row.cur .eq i{animation:eq 0.9s ease-in-out infinite}
 #player .label{font-size:13px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
 #pstage{flex:1;display:grid;place-items:center;min-height:0;padding:8px 0}
 #pstage .art{width:min(100%,46vh,420px);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
-#ptitle{font-size:22px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ptitle{font-size:22px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #psub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
 .times{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:none;margin:0;--p:0%}
@@ -360,17 +369,24 @@ function fill(container, items, make, onDone) {
   onDone && onDone();
 }
 
-function songRow(id, scope) {
+// number: the position inside an album/folder/artist screen; omitted in the whole-drive list.
+function songRow(id, scope, number, subText) {
   const t = lib.tracks[id];
   const b = document.createElement('button');
-  b.className = 'row'; b.dataset.id = id;
+  b.className = 'row' + (number ? ' num' : ''); b.dataset.id = id;
+  if (number) {
+    const n = document.createElement('span'); n.className = 'no'; n.textContent = number;
+    b.append(n);
+  }
   b.append(makeArt(id));
   const m = document.createElement('div'); m.className = 'meta';
   const a = document.createElement('div'); a.className = 't'; a.textContent = t[0];
-  const s = document.createElement('div'); s.className = 's'; s.textContent = sub(t) || t[1].split('/').pop();
+  const s = document.createElement('div'); s.className = 's';
+  s.textContent = subText !== undefined ? subText : (sub(t) || t[1].split('/').pop());
   m.append(a, s);
   const eq = document.createElement('span'); eq.className = 'eq'; eq.innerHTML = '<i></i><i></i><i></i>';
-  b.append(m, eq);
+  const dur = document.createElement('span'); dur.className = 'dur'; dur.textContent = t[4] ? fmt(t[4]) : '';
+  b.append(m, eq, dur);
   b.onclick = () => play(id, scope);
   return b;
 }
@@ -390,7 +406,7 @@ function groupRow(g, kind) {
 
 function folderRow(n, withPath) {
   const b = document.createElement('button');
-  b.className = 'row';
+  b.className = 'row folder';
   b.append(makeArt(n.all[0]));
   const m = document.createElement('div'); m.className = 'meta';
   const a = document.createElement('div'); a.className = 't'; a.textContent = n.name;
@@ -398,7 +414,7 @@ function folderRow(n, withPath) {
   const bits = [];
   if (n.children.size) bits.push(plural(n.children.size, 'folder'));
   bits.push(plural(n.all.length, 'song'));
-  s.textContent = (withPath && relPath(n) ? relPath(n) + ' \u00b7 ' : '') + bits.join(' \u00b7 ');
+  s.textContent = ['Folder', withPath && relPath(n), ...bits].filter(Boolean).join(' \u00b7 ');
   m.append(a, s);
   b.append(m);
   b.onclick = () => openDetail({
@@ -499,7 +515,7 @@ function showDetail(d) {
   }
   const songs = document.createElement('div');
   list.append(songs);
-  fill(songs, d.ids, id => songRow(id, d.scope));
+  fill(songs, d.ids, (id, i) => songRow(id, d.scope, i + 1, d.scope === 'album' ? lib.tracks[id][2] : undefined));
   $('#detail').scrollTop = 0;
   markCurrent();
 }

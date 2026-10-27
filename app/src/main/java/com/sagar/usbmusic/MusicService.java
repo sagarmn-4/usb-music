@@ -527,7 +527,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private JSONObject libraryJson() throws JSONException {
         JSONArray tracks = new JSONArray();
         for (Track t : library) {
-            tracks.put(new JSONArray().put(t.title).put(t.folder).put(t.artist).put(t.album));
+            tracks.put(new JSONArray().put(t.title).put(t.folder).put(t.artist).put(t.album).put(t.durationMs));
         }
         return new JSONObject().put("ver", version).put("tracks", tracks);
     }

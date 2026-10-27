@@ -88,7 +88,7 @@ final class LibraryScanner {
             String[] tags = readTags(mmr, f.getAbsolutePath());
             out.add(new Track(tags[0].isEmpty() ? base : tags[0],
                     rel.isEmpty() ? "(top folder)" : rel,
-                    f.getAbsolutePath(), true, tags[1], tags[2], base));
+                    f.getAbsolutePath(), true, tags[1], tags[2], base, toInt(tags[3])));
         }
     }
 
@@ -100,9 +100,17 @@ final class LibraryScanner {
         return false;
     }
 
-    /** Returns {title, artist, album}; any of them may be empty. */
+    private static int toInt(String s) {
+        try {
+            return Integer.parseInt(s);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** Returns {title, artist, album, durationMs}; any of them may be empty. */
     private static String[] readTags(MediaMetadataRetriever mmr, String path) {
-        String[] r = {"", "", ""};
+        String[] r = {"", "", "", ""};
         try {
             mmr.setDataSource(path);
             r[0] = clean(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE));
@@ -112,6 +120,7 @@ final class LibraryScanner {
             }
             r[1] = artist;
             r[2] = clean(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));
+            r[3] = clean(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
         } catch (Exception ignored) {
         }
         return r;
@@ -134,7 +143,8 @@ final class LibraryScanner {
                         MediaStore.Audio.Media.TITLE,
                         MediaStore.Audio.Media.RELATIVE_PATH,
                         MediaStore.Audio.Media.ARTIST,
-                        MediaStore.Audio.Media.ALBUM};
+                        MediaStore.Audio.Media.ALBUM,
+                        MediaStore.Audio.Media.DURATION};
                 int before = out.size();
                 try (Cursor c = ctx.getContentResolver().query(base, proj, null, null, null)) {
                     if (c == null) continue;
@@ -151,7 +161,7 @@ final class LibraryScanner {
                         if (inSkippedDir(rel)) continue;
                         Uri uri = ContentUris.withAppendedId(base, c.getLong(0));
                         out.add(new Track(title, rel, uri.toString(), false,
-                                clean(c.getString(4)), clean(c.getString(5)), fileBase));
+                                clean(c.getString(4)), clean(c.getString(5)), fileBase, c.getInt(6)));
                     }
                 }
                 log.append("MediaStore ").append(vol).append(": ").append(out.size() - before)
