@@ -92,6 +92,14 @@ final class LibraryScanner {
         }
     }
 
+    /** True when any folder in a relative path is one the file scan would skip. */
+    private static boolean inSkippedDir(String rel) {
+        for (String part : rel.split("/")) {
+            if (SKIP_DIRS.contains(part.toLowerCase(Locale.ROOT))) return true;
+        }
+        return false;
+    }
+
     /** Returns {title, artist, album}; any of them may be empty. */
     private static String[] readTags(MediaMetadataRetriever mmr, String path) {
         String[] r = {"", "", ""};
@@ -140,6 +148,7 @@ final class LibraryScanner {
                         String rel = c.getString(3);
                         if (rel == null || rel.isEmpty() || rel.equals("/")) rel = "(top folder)";
                         while (rel.endsWith("/")) rel = rel.substring(0, rel.length() - 1);
+                        if (inSkippedDir(rel)) continue;
                         Uri uri = ContentUris.withAppendedId(base, c.getLong(0));
                         out.add(new Track(title, rel, uri.toString(), false,
                                 clean(c.getString(4)), clean(c.getString(5)), fileBase));
