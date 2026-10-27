@@ -278,8 +278,39 @@ async function loadLib() {
   } finally { loadingLib = false; }
 }
 
+// Folder tree for the Folders tab. A leading "Music" folder is dropped; songs sitting directly
+// in it have no folder name to show, so they stay out of this tab.
+function addToTree(root, folder, id) {
+  const orig = folder.split('/').filter(Boolean);
+  const skip = orig.length && orig[0].toLowerCase() === 'music' ? 1 : 0;
+  let n = root;
+  for (let i = skip; i < orig.length; i++) {
+    let c = n.children.get(orig[i]);
+    if (!c) {
+      c = {name: orig[i], full: orig.slice(0, i + 1).join('/'), parent: n.name ? n : null,
+           children: new Map(), ids: [], all: []};
+      n.children.set(orig[i], c);
+    }
+    n = c;
+    n.all.push(id);
+  }
+  if (n !== root) n.ids.push(id);
+}
+const byName = (a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base', numeric: true});
+const sortedKids = n => [...n.children.values()].sort(byName);
+function flattenTree(n, out = []) {
+  for (const c of sortedKids(n)) { out.push(c); flattenTree(c, out); }
+  return out;
+}
+function relPath(n) {
+  const parts = [];
+  for (let p = n.parent; p; p = p.parent) parts.unshift(p.name);
+  return parts.join(' / ');
+}
+
 function buildIndex() {
-  const albums = new Map(), artists = new Map(), folders = new Map();
+  const albums = new Map(), artists = new Map();
+  const tree = {name: '', children: new Map(), ids: [], all: []};
   lib.tracks.forEach((t, id) => {
     const [, folder, artist, album] = t;
     const pa = primary(artist);
@@ -295,15 +326,13 @@ function buildIndex() {
       if (!a) { a = {name: pa, ids: []}; artists.set(pa, a); }
       a.ids.push(id);
     }
-    let f = folders.get(folder);
-    if (!f) { f = {name: folder, ids: []}; folders.set(folder, f); }
-    f.ids.push(id);
+    addToTree(tree, folder, id);
   });
-  const byName = (a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base', numeric: true});
   idx = {
     albums: [...albums.values()].sort(byName),
     artists: [...artists.values()].sort(byName),
-    folders: [...folders.values()],
+    tree,
+    folderNodes: flattenTree(tree),
   };
 }
 
@@ -359,6 +388,26 @@ function groupRow(g, kind) {
   return b;
 }
 
+function folderRow(n, withPath) {
+  const b = document.createElement('button');
+  b.className = 'row';
+  b.append(makeArt(n.all[0]));
+  const m = document.createElement('div'); m.className = 'meta';
+  const a = document.createElement('div'); a.className = 't'; a.textContent = n.name;
+  const s = document.createElement('div'); s.className = 's';
+  const bits = [];
+  if (n.children.size) bits.push(plural(n.children.size, 'folder'));
+  bits.push(plural(n.all.length, 'song'));
+  s.textContent = (withPath && relPath(n) ? relPath(n) + ' \u00b7 ' : '') + bits.join(' \u00b7 ');
+  m.append(a, s);
+  b.append(m);
+  b.onclick = () => openDetail({
+    title: n.name, sub: bits.join(' \u00b7 '), ids: n.ids, allIds: n.all,
+    children: sortedKids(n), scope: 'folder', treePath: n.full,
+  });
+  return b;
+}
+
 function albumCard(a) {
   const b = document.createElement('button');
   b.className = 'card';
@@ -403,10 +452,10 @@ function render() {
     const l = document.createElement('div'); view.append(l);
     fill(l, items, a => groupRow(a, 'artist'));
   } else {
-    const items = idx.folders.filter(f => has(f.name));
+    const items = q ? idx.folderNodes.filter(f => has(f.name)) : sortedKids(idx.tree);
     shown = items.length;
     const l = document.createElement('div'); view.append(l);
-    fill(l, items, f => groupRow(f, 'folder'));
+    fill(l, items, f => folderRow(f, !!q));
   }
 
   if (!shown) {
@@ -420,24 +469,38 @@ function render() {
 }
 
 /* ---------- detail screen ---------- */
+const detailStack = [];
 function openDetail(d) {
-  detail = d;
+  detailStack.push(d);
+  showDetail(d);
+  $('#detail').classList.add('open');
+  history.pushState({l: 'd'}, '');
+}
+
+function showDetail(d) {
+  const all = d.allIds || d.ids;
   const hero = $('#hero');
   hero.textContent = '';
-  hero.append(makeArt(d.ids[0]));
+  hero.append(makeArt(all[0]));
   const h = document.createElement('h2'); h.textContent = d.title;
   const s = document.createElement('div'); s.className = 'sub'; s.textContent = d.sub;
   const r = document.createElement('div'); r.className = 'actionrow';
   r.innerHTML = '<button class="btn">' + icon('play') + 'Play</button><button class="btn ghost">' + icon('shuffle') + 'Shuffle</button>';
-  r.children[0].onclick = () => cmd('shuffle?on=0').then(() => play(d.ids[0], d.scope));
-  r.children[1].onclick = () => shufflePlay(d.ids, d.scope);
+  const scope = d.treePath ? 'tree' : d.scope;
+  r.children[0].onclick = () => cmd('shuffle?on=0').then(() => play(all[0], scope, d.treePath));
+  r.children[1].onclick = () => shufflePlay(all, scope, d.treePath);
   hero.append(h, s, r);
   const list = $('#detailList');
   list.textContent = '';
-  fill(list, d.ids, id => songRow(id, d.scope));
+  if (d.children && d.children.length) {
+    const kids = document.createElement('div');
+    list.append(kids);
+    fill(kids, d.children, n => folderRow(n, false));
+  }
+  const songs = document.createElement('div');
+  list.append(songs);
+  fill(songs, d.ids, id => songRow(id, d.scope));
   $('#detail').scrollTop = 0;
-  $('#detail').classList.add('open');
-  history.pushState({l: 'd'}, '');
   markCurrent();
 }
 
@@ -562,11 +625,11 @@ function syncSession(s) {
 }
 
 const cmd = p => api(p).then(applyState).catch(() => { $('#err').textContent = 'Cannot reach the TV'; });
-const play = (id, scope) => cmd('play?id=' + id + '&scope=' + scope);
-function shufflePlay(ids, scope) {
+const play = (id, scope, path) => cmd('play?id=' + id + '&scope=' + scope + (path ? '&path=' + encodeURIComponent(path) : ''));
+function shufflePlay(ids, scope, path) {
   if (!ids.length) return;
   const id = ids[Math.floor(Math.random() * ids.length)];
-  return cmd('shuffle?on=1').then(() => play(id, scope));
+  return cmd('shuffle?on=1').then(() => play(id, scope, path));
 }
 
 /* ---------- wiring ---------- */
@@ -612,7 +675,8 @@ $('#pclose').onclick = () => history.back();
 $('#detailBack').onclick = () => history.back();
 window.addEventListener('popstate', () => {
   if ($('#player').classList.contains('open')) $('#player').classList.remove('open');
-  else if ($('#detail').classList.contains('open')) $('#detail').classList.remove('open');
+  else if (detailStack.length > 1) { detailStack.pop(); showDetail(detailStack[detailStack.length - 1]); }
+  else if ($('#detail').classList.contains('open')) { detailStack.length = 0; $('#detail').classList.remove('open'); }
 });
 
 $('#toggle').onclick = $('#mtoggle').onclick = () => cmd('toggle');

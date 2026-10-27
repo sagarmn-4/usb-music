@@ -64,6 +64,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     /** What the queue was built from: "all", "folder", "album" or "artist" (relative to scopeRef). */
     private String scopeKind = "all";
     private Track scopeRef;
+    /** Folder path for the "tree" scope: that folder and everything below it. */
+    private String scopePath = "";
     private int qpos = -1;
     private Track current;
 
@@ -214,10 +216,11 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
 
     // ---- playback -------------------------------------------------------------------------
 
-    private void playId(int id, String scope) {
+    private void playId(int id, String scope, String path) {
         if (id < 0 || id >= library.size()) return;
         Track t = library.get(id);
         scopeKind = scope == null ? "folder" : scope;
+        scopePath = path == null ? "" : path;
         scopeRef = t;
         buildQueue(t);
         startTrack(t);
@@ -243,6 +246,11 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         switch (scopeKind) {
             case "album":
                 if (!r.album.isEmpty()) return x.album.equals(r.album) && x.folder.equals(r.folder);
+                break;
+            case "tree":
+                if (!scopePath.isEmpty()) {
+                    return x.folder.equals(scopePath) || x.folder.startsWith(scopePath + "/");
+                }
                 break;
             case "artist":
                 if (!r.primaryArtist().isEmpty()) return x.primaryArtist().equals(r.primaryArtist());
@@ -373,7 +381,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         if (current == null) {
             if (!library.isEmpty()) {
                 int start = shuffle ? (int) (Math.random() * library.size()) : 0;
-                playId(start, "all");
+                playId(start, "all", null);
             }
             return;
         }
@@ -538,7 +546,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                                 .put("ip", WebServer.localIp()).put("port", port());
                     case "play":
                         lastError = "";
-                        playId(intArg(q, "id", -1), q.get("scope"));
+                        playId(intArg(q, "id", -1), q.get("scope"), q.get("path"));
                         break;
                     case "toggle":
                         togglePlay();
