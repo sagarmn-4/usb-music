@@ -502,7 +502,7 @@ function applyState(s) {
    The music plays on the TV, so the phone browser has no audio of its own. A silent looping
    clip keeps a media session alive; the browser then shows its media notification, and we
    fill that with the TV's track and send its buttons to the TV. Starts on the first tap. */
-let silent = null, sessionOn = false, sessionId = -2;
+let silent = null, sessionOn = false, sessionId = -2, holdUntil = 0;
 
 function silentWav() {
   const rate = 8000, n = rate * 10;
@@ -523,8 +523,10 @@ function startSession() {
   silent.loop = true;
   silent.play().catch(() => { sessionOn = false; });
   const on = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch (e) {} };
-  on('play', () => { if (!st.playing) cmd('toggle'); });
-  on('pause', () => { if (st.playing) cmd('toggle'); });
+  // The silent clip must mirror the TV: if it kept playing while the TV is paused, the
+  // notification would show a Pause button and the Play tap would never arrive.
+  on('play', () => { holdUntil = Date.now() + 2000; silent.play().catch(() => {}); if (!st.playing) cmd('toggle'); });
+  on('pause', () => { holdUntil = Date.now() + 2000; silent.pause(); if (st.playing) cmd('toggle'); });
   on('nexttrack', () => cmd('next'));
   on('previoustrack', () => cmd('prev'));
   on('seekto', d => cmd('seek?ms=' + Math.round(d.seekTime * 1000)));
@@ -538,7 +540,10 @@ document.addEventListener('pointerdown', startSession, {passive: true});
 function syncSession(s) {
   if (!sessionOn) return;
   const ms = navigator.mediaSession;
-  if (silent && silent.paused) silent.play().catch(() => {});
+  if (Date.now() > holdUntil) {
+    if (s.playing && silent.paused) silent.play().catch(() => {});
+    else if (!s.playing && !silent.paused) silent.pause();
+  }
   if (s.id !== sessionId) {
     sessionId = s.id;
     ms.metadata = s.id >= 0 && s.title
