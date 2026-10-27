@@ -14,6 +14,7 @@ if ($Reset) {
     Write-Host 'Back to the page built into the app.'
 } else {
     & $adb push (Join-Path $PSScriptRoot 'app\src\main\assets\index.html') /data/local/tmp/usbmusic-index.html | Out-Null
+    & $adb shell run-as $pkg mkdir -p files
     & $adb shell run-as $pkg cp /data/local/tmp/usbmusic-index.html files/index.html
     & $adb shell rm -f /data/local/tmp/usbmusic-index.html
     Write-Host "Done. Reload http://${Tv}:8080 on the phone."
