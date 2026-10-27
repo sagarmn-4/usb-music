@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111418">
+<title>USB Music</title>
+<style>
+:root{--bg:#111418;--panel:#1b2027;--line:#2a313b;--text:#e8ecf1;--muted:#8b96a5;--accent:#4fc3f7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,sans-serif;padding-bottom:230px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px;border-bottom:1px solid var(--line)}
+h1{margin:0 0 8px;font-size:20px;display:flex;justify-content:space-between;align-items:center}
+h1 small{font-size:13px;font-weight:400;color:var(--muted)}
+input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:16px}
+#msg{padding:16px;color:var(--muted)}
+#err{padding:0 16px;color:#ff8a80}
+details{border-bottom:1px solid var(--line)}
+summary{list-style:none;cursor:pointer;padding:12px 16px;display:flex;gap:10px;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary .name{flex:1;overflow-wrap:anywhere;font-weight:600}
+summary .n{color:var(--muted);font-size:13px}
+summary .go{border:1px solid var(--line);background:var(--panel);color:var(--accent);border-radius:8px;padding:4px 10px}
+.row{display:block;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:var(--text);padding:11px 16px 11px 28px;font:inherit;overflow-wrap:anywhere}
+.row.cur{color:var(--accent);background:var(--panel)}
+#bar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+#now{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#fold{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+.seek{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px}
+.seek input{flex:1}
+input[type=range]{accent-color:var(--accent);width:100%}
+.ctl{display:flex;justify-content:space-between;align-items:center;margin:6px 0}
+.ctl button{background:none;border:1px solid var(--line);color:var(--text);border-radius:12px;min-width:52px;height:48px;font-size:22px}
+.ctl button.main{background:var(--accent);color:#06222e;border-color:var(--accent);min-width:68px}
+.ctl button.on{color:var(--accent);border-color:var(--accent)}
+.vol{display:flex;gap:8px;align-items:center;color:var(--muted)}
+.tools{display:flex;gap:12px;margin-top:6px;font-size:13px}
+.tools button{background:none;border:0;color:var(--muted);padding:0;font:inherit;text-decoration:underline}
+pre{margin:0;padding:12px 16px;color:var(--muted);white-space:pre-wrap;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>USB Music <small id="count"></small></h1>
+  <input id="q" type="search" placeholder="Search songs or folders" autocomplete="off">
+</header>
+<div id="err"></div>
+<div id="msg">Loading…</div>
+<div id="list"></div>
+<pre id="debug" hidden></pre>
+
+<div id="bar">
+  <div id="now">Nothing playing</div>
+  <div id="fold"></div>
+  <div class="seek"><span id="t0">0:00</span><input id="seek" type="range" min="0" max="0" value="0"><span id="t1">0:00</span></div>
+  <div class="ctl">
+    <button id="shuf" title="Shuffle">⇄</button>
+    <button id="prev" title="Previous">⏮</button>
+    <button id="toggle" class="main" title="Play / pause">▶</button>
+    <button id="next" title="Next">⏭</button>
+    <button id="rep" title="Repeat">⟲</button>
+  </div>
+  <div class="vol"><span>TV volume</span><input id="vol" type="range" min="0" max="15" value="0"></div>
+  <div class="tools"><button id="all">Play all</button><button id="rescan">Rescan USB</button><button id="dbg">Scan log</button></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let lib = {ver: -1, tracks: []};
+let st = {};
+let seeking = false, volDrag = false, loadingLib = false;
+let rows = [];
+
+async function api(p) {
+  const r = await fetch('/api/' + p, {cache: 'no-store'});
+  return r.json();
+}
+function fmt(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+async function loadLib() {
+  if (loadingLib) return;
+  loadingLib = true;
+  try { lib = await api('library'); renderList(); } finally { loadingLib = false; }
+}
+
+function renderList() {
+  const q = $('#q').value.trim().toLowerCase();
+  const list = $('#list');
+  list.textContent = '';
+  rows = [];
+  const groups = new Map();
+  lib.tracks.forEach(([title, folder], id) => {
+    if (q && !title.toLowerCase().includes(q) && !folder.toLowerCase().includes(q)) return;
+    if (!groups.has(folder)) groups.set(folder, []);
+    groups.get(folder).push([title, id]);
+  });
+  const single = groups.size === 1;
+  for (const [folder, items] of groups) {
+    const d = document.createElement('details');
+    d.open = !!q || single;
+    const s = document.createElement('summary');
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = folder;
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = items.length;
+    const go = document.createElement('button'); go.className = 'go'; go.textContent = '▶ Play';
+    go.onclick = e => { e.preventDefault(); play(items[0][1], 'folder'); };
+    s.append(name, n, go);
+    d.append(s);
+    for (const [title, id] of items) {
+      const b = document.createElement('button');
+      b.className = 'row'; b.textContent = title; b.dataset.id = id;
+      b.onclick = () => play(id, 'folder');
+      d.append(b);
+      rows.push(b);
+    }
+    list.append(d);
+  }
+  $('#msg').hidden = groups.size > 0;
+  if (!groups.size) {
+    $('#msg').textContent = lib.tracks.length
+      ? 'No match.'
+      : (st.scanning ? 'Scanning the USB drive…' : 'No music found. Check the USB drive is plugged into the TV, then tap Rescan USB. "Scan log" shows what the TV saw.');
+  }
+  markCurrent();
+}
+
+function markCurrent() {
+  for (const b of rows) b.classList.toggle('cur', Number(b.dataset.id) === st.id);
+}
+
+function applyState(s) {
+  if (!s || s.error === 'unknown command') return;
+  st = s;
+  if (s.ver !== lib.ver) loadLib();
+  $('#count').textContent = s.scanning ? 'scanning…' : s.count + ' songs';
+  $('#err').textContent = s.error || '';
+  $('#now').textContent = s.title || (s.loading ? 'Loading…' : 'Nothing playing');
+  $('#fold').textContent = s.folder || '';
+  $('#toggle').textContent = s.playing ? '⏸' : '▶';
+  $('#shuf').classList.toggle('on', s.shuffle);
+  const rep = $('#rep');
+  rep.classList.toggle('on', s.repeat !== 'off');
+  rep.textContent = s.repeat === 'one' ? '⟲1' : '⟲';
+  if (!seeking) {
+    $('#seek').max = s.dur; $('#seek').value = s.pos;
+    $('#t0').textContent = fmt(s.pos);
+  }
+  $('#t1').textContent = fmt(s.dur);
+  if (!volDrag) { $('#vol').max = s.maxVol; $('#vol').value = s.vol; }
+  markCurrent();
+}
+
+const cmd = p => api(p).then(applyState).catch(() => { $('#err').textContent = 'Cannot reach the TV'; });
+const play = (id, scope) => cmd('play?id=' + id + '&scope=' + scope);
+
+$('#toggle').onclick = () => cmd('toggle');
+$('#next').onclick = () => cmd('next');
+$('#prev').onclick = () => cmd('prev');
+$('#shuf').onclick = () => cmd('shuffle?on=' + (st.shuffle ? 0 : 1));
+$('#rep').onclick = () => cmd('repeat?mode=' + ({off: 'all', all: 'one', one: 'off'}[st.repeat] || 'all'));
+$('#all').onclick = () => { if (lib.tracks.length) play(0, 'all'); };
+$('#rescan').onclick = () => cmd('rescan');
+$('#dbg').onclick = async () => {
+  const d = $('#debug');
+  if (!d.hidden) { d.hidden = true; return; }
+  const j = await api('debug');
+  d.textContent = 'TV address: ' + j.ip + ':' + j.port + '\n' + j.log;
+  d.hidden = false;
+  d.scrollIntoView();
+};
+$('#seek').addEventListener('input', e => { seeking = true; $('#t0').textContent = fmt(+e.target.value); });
+$('#seek').addEventListener('change', e => { cmd('seek?ms=' + e.target.value).then(() => { seeking = false; }); });
+$('#vol').addEventListener('input', () => { volDrag = true; });
+$('#vol').addEventListener('change', e => { cmd('volume?v=' + e.target.value).then(() => { volDrag = false; }); });
+$('#q').addEventListener('input', renderList);
+
+function poll() { api('state').then(applyState).catch(() => { $('#err').textContent = 'Cannot reach the TV'; }); }
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>
