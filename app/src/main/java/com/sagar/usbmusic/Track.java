@@ -1,4 +1,4 @@
-﻿package com.sagar.usbmusic;
+package com.sagar.usbmusic;
 
 import android.net.Uri;
 
