@@ -495,6 +495,65 @@ function applyState(s) {
   $('#t1').textContent = fmt(s.dur);
   if (!volDrag) setRange($('#vol'), s.vol, s.maxVol);
   if (prevId !== s.id || lastMark !== s.id + '|' + s.playing) markCurrent();
+  syncSession(s);
+}
+
+/* ---------- phone lock-screen / notification controls ----------
+   The music plays on the TV, so the phone browser has no audio of its own. A silent looping
+   clip keeps a media session alive; the browser then shows its media notification, and we
+   fill that with the TV's track and send its buttons to the TV. Starts on the first tap. */
+let silent = null, sessionOn = false, sessionId = -2;
+
+function silentWav() {
+  const rate = 8000, n = rate * 10;
+  const buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVE'); str(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, 'data'); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128 + (i & 1)); // inaudible
+  return URL.createObjectURL(new Blob([buf], {type: 'audio/wav'}));
+}
+
+function startSession() {
+  if (sessionOn || !('mediaSession' in navigator)) return;
+  sessionOn = true;
+  silent = new Audio(silentWav());
+  silent.loop = true;
+  silent.play().catch(() => { sessionOn = false; });
+  const on = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch (e) {} };
+  on('play', () => { if (!st.playing) cmd('toggle'); });
+  on('pause', () => { if (st.playing) cmd('toggle'); });
+  on('nexttrack', () => cmd('next'));
+  on('previoustrack', () => cmd('prev'));
+  on('seekto', d => cmd('seek?ms=' + Math.round(d.seekTime * 1000)));
+  on('seekforward', () => cmd('seek?ms=' + Math.min(st.dur, st.pos + 10000)));
+  on('seekbackward', () => cmd('seek?ms=' + Math.max(0, st.pos - 10000)));
+  sessionId = -2;
+  syncSession(st);
+}
+document.addEventListener('pointerdown', startSession, {passive: true});
+
+function syncSession(s) {
+  if (!sessionOn) return;
+  const ms = navigator.mediaSession;
+  if (silent && silent.paused) silent.play().catch(() => {});
+  if (s.id !== sessionId) {
+    sessionId = s.id;
+    ms.metadata = s.id >= 0 && s.title
+      ? new MediaMetadata({
+          title: s.title,
+          artist: s.artist || '',
+          album: s.album || s.folder || '',
+          artwork: [{src: new URL(artUrl(s.id), location.href).href, sizes: '512x512', type: 'image/jpeg'}],
+        })
+      : null;
+  }
+  ms.playbackState = s.id < 0 ? 'none' : (s.playing ? 'playing' : 'paused');
+  if (s.dur > 0) {
+    try { ms.setPositionState({duration: s.dur / 1000, position: Math.min(s.pos, s.dur) / 1000, playbackRate: 1}); } catch (e) {}
+  }
 }
 
 const cmd = p => api(p).then(applyState).catch(() => { $('#err').textContent = 'Cannot reach the TV'; });
