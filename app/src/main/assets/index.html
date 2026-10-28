@@ -116,12 +116,15 @@ body.playing .pi .p-play{display:none}
 #player .label{font-size:13px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
 #pstage{flex:1;display:grid;place-items:center;min-height:0;margin:8px 0;container-type:size}
 #pstage .art{width:min(100cqw,100cqh,420px);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
-.pcard{position:relative;overflow:hidden;width:min(100cqw,100cqh,420px);aspect-ratio:1;border-radius:14px;background:#1f1f1f;padding:6%;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 18px 50px rgba(0,0,0,.55);text-align:left}
-.pc-path{color:var(--muted);font-size:14px;line-height:20px;margin-bottom:4px;overflow-wrap:anywhere}
-.pc-name{font-size:28px;font-weight:700;line-height:1.1;letter-spacing:-.3px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.pc-track{color:var(--muted);font-size:14px;line-height:20px;margin-top:8px}
-.pcard img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s}
-.pcard.has img{opacity:1}
+.pwrap{position:relative;width:min(100cqw,100cqh,420px);aspect-ratio:1}
+.disc{width:100%;height:100%;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#121212 0 2px,#1d1d1d 2px 3px);display:grid;place-items:center;box-shadow:0 18px 50px rgba(0,0,0,.55);animation:spin 7s linear infinite;animation-play-state:paused;transition:opacity .25s}
+body.playing .disc{animation-play-state:running}
+.disc .lab{width:36%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-size:clamp(30px,13vw,72px);font-weight:500;color:#fff}
+.pwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px;opacity:0;transition:opacity .25s;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.pwrap.has img{opacity:1}
+.pwrap.has .disc{opacity:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.disc{animation:none}}
 #ptitle{font-size:22px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #psub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
 .times{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
@@ -335,33 +338,29 @@ function spanText(ms) {
   const h = Math.floor(m / 60), r = m % 60;
   return h + (h === 1 ? ' hour' : ' hours') + (r ? ', ' + r + ' minutes' : '');
 }
-// Player cover: the embedded art when the song has it, otherwise a card with its folder and track number.
+// Player cover: the embedded art when the song has it, otherwise a record that spins while it plays.
 function playerArt(id) {
-  const d = document.createElement('div');
-  d.className = 'pcard';
+  const w = document.createElement('div');
+  w.className = 'pwrap';
   const t = lib.tracks[id];
-  if (!t) return d;
-  const segs = t[1].split('/').filter(Boolean);
-  const name = segs.pop() || t[1];
-  if (segs.length && segs[0].toLowerCase() === 'music') segs.shift();
-  const node = idx.byFull.get(t[1]);
-  const sib = node ? node.ids : [];
-  if (!node) lib.tracks.forEach((x, i) => { if (x[1] === t[1]) sib.push(i); });
-  const pos = sib.indexOf(id) + 1;
-  const line = (cls, txt) => { const e = document.createElement('div'); e.className = cls; e.textContent = txt; return e; };
-  if (segs.length) d.append(line('pc-path', segs.join(' / ')));
-  d.append(line('pc-name', name));
-  if (pos) d.append(line('pc-track', 'Track ' + pos + ' of ' + sib.length));
+  if (!t) return w;
+  const name = t[1].split('/').filter(Boolean).pop() || t[1];
+  const disc = document.createElement('div'); disc.className = 'disc';
+  const lab = document.createElement('div'); lab.className = 'lab';
+  lab.textContent = (name.trim()[0] || '\u266a').toUpperCase();
+  lab.style.background = 'hsl(' + hueOf(id) + ' 45% 34%)';
+  disc.append(lab);
+  w.append(disc);
   const key = t[3] ? t[1] + '|' + t[3] : '#' + id;
   if (!noArt.has(key)) {
     const img = new Image();
     img.alt = ''; img.decoding = 'async';
-    img.onload = () => d.classList.add('has');
+    img.onload = () => w.classList.add('has');
     img.onerror = () => { noArt.add(key); img.remove(); };
     img.src = '/art?id=' + id + '&v=' + lib.ver;
-    d.append(img);
+    w.append(img);
   }
-  return d;
+  return w;
 }
 
 function artUrl(id) { return '/art?id=' + id + '&v=' + lib.ver; }
