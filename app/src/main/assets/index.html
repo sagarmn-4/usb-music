@@ -134,7 +134,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .ctl .main .ic{width:36px;height:36px}
 .vol{margin-top:26px;padding:12px 16px 14px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;gap:6px}
 .vbtn.on{background:#fff;color:#000}
-.vol input[type=range]{margin:4px 0 2px}
+.vbars{display:flex;align-items:flex-end;justify-content:space-between;width:100%;height:36px;margin:6px 0 4px;touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none}
+.vbars i{display:block;width:2px;border-radius:1px;background:#4d4d4d}
+.vbars i.on{background:#fff}
 .vnum.dim{color:var(--muted)}
 #player>#pmenu{position:absolute;top:58px;right:14px;z-index:5;background:#2b2b2b;border-radius:12px;padding:6px 0;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #pmenu button{display:flex;gap:12px;align-items:center;width:100%;padding:12px 16px;text-align:left}
@@ -253,7 +255,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     </div>
     <div class="vol">
       <div class="vlabel"><svg class="ic"><use href="#i-vol"/></svg>TV volume</div>
-      <input id="vol" type="range" min="0" max="100" value="0" aria-label="TV volume">
+      <div class="vbars" id="vol" role="slider" aria-label="TV volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
       <div class="vctl">
         <button class="vbtn" id="vmute" aria-label="Mute" hidden><svg class="ic"><use href="#i-vol"/></svg></button>
         <button class="vbtn" id="vdown" aria-label="Volume down"><svg class="ic"><use href="#i-minus"/></svg></button>
@@ -759,7 +761,7 @@ function applyState(s) {
   if (volTarget === null) {
     const shown = muted ? lastVol : s.vol;
     $('#vnum').textContent = shown;
-    setRange($('#vol'), shown, s.maxVol);
+    setBars(shown, s.maxVol);
   }
   $('#vnum').classList.toggle('dim', muted);
   $('#vmute').classList.toggle('on', muted);
@@ -933,7 +935,7 @@ try { lastVol = +localStorage.getItem('usbmusic.vol') || 30; } catch (e) {}
 function sendVol(v, delay) {
   volTarget = v;
   $('#vnum').textContent = v;
-  setRange($('#vol'), v, st.maxVol || 100);
+  setBars(v, st.maxVol || 100);
   clearTimeout(volSend);
   const done = () => { volTarget = null; };
   volSend = setTimeout(() => cmd('volume?v=' + v).then(done, done), delay);
@@ -943,18 +945,46 @@ function stepVol(d) {
   sendVol(Math.max(0, Math.min(st.maxVol || 100, base + d)), 150);
 }
 // Dragging the bar sends the level while you move (at most every 150 ms) and once more at the end.
-let volSentAt = 0, unmuting = false;
-$('#vol').addEventListener('input', e => {
-  const v = +e.target.value;
-  volTarget = v;
-  $('#vnum').textContent = v;
-  setRange(e.target, v, +e.target.max);
-  const now = Date.now();
-  if (now - volSentAt > 150) { volSentAt = now; cmd('volume?v=' + v); }
-  clearTimeout(volSend);
-  const done = () => { volTarget = null; };
-  volSend = setTimeout(() => cmd('volume?v=' + volTarget).then(done, done), 200);
-});
+// Volume level as a row of 100 rising bars (one per unit); drag across it to set the level.
+const VBARS = 100;
+(function buildBars() {
+  const box = $('#vol');
+  for (let i = 0; i < VBARS; i++) {
+    const b = document.createElement('i');
+    b.style.height = (6 + Math.round(i * 30 / (VBARS - 1))) + 'px';
+    box.append(b);
+  }
+})();
+let barsLit = -1;
+function setBars(v, max) {
+  const lit = Math.max(0, Math.min(VBARS, Math.round(v / (max || 100) * VBARS)));
+  $('#vol').setAttribute('aria-valuenow', v);
+  if (lit === barsLit) return;
+  barsLit = lit;
+  const kids = $('#vol').children;
+  for (let i = 0; i < kids.length; i++) kids[i].classList.toggle('on', i < lit);
+}
+
+let volSentAt = 0;
+(function dragBars() {
+  const box = $('#vol');
+  const at = e => {
+    const r = box.getBoundingClientRect();
+    const max = st.maxVol || 100;
+    const v = Math.max(0, Math.min(max, Math.round((e.clientX - r.left) / r.width * max)));
+    volTarget = v;
+    $('#vnum').textContent = v;
+    setBars(v, max);
+    const now = Date.now();
+    if (now - volSentAt > 150) { volSentAt = now; cmd('volume?v=' + v); }
+    clearTimeout(volSend);
+    const done = () => { volTarget = null; };
+    volSend = setTimeout(() => cmd('volume?v=' + volTarget).then(done, done), 200);
+  };
+  box.addEventListener('pointerdown', e => { box.setPointerCapture(e.pointerId); at(e); box.onpointermove = at; });
+  box.addEventListener('pointerup', () => { box.onpointermove = null; });
+  box.addEventListener('pointercancel', () => { box.onpointermove = null; });
+})();
 $('#vmute').onclick = () => cmd('mute?on=' + (st.muted ? 0 : 1));
 function holdStep(btn, d) {
   let start = null, rep = null;
