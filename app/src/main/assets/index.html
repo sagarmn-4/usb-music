@@ -133,10 +133,8 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .ctl .main{width:68px;height:68px;border-radius:50%;background:#fff;color:var(--bg);display:grid;place-items:center}
 .ctl .main .ic{width:36px;height:36px}
 .vol{margin-top:26px;padding:12px 16px 14px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;gap:6px}
-.vhead{display:flex;justify-content:space-between;align-items:center;width:100%}
-.vmute{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:16px;background:rgba(255,255,255,.12);font-size:13px;font-weight:500}
-.vmute .ic{width:18px;height:18px}
-.vmute.on{background:#fff;color:#000}
+.vbtn.on{background:#fff;color:#000}
+.vol input[type=range]{margin:4px 0 2px}
 .vnum.dim{color:var(--muted)}
 #player>#pmenu{position:absolute;top:58px;right:14px;z-index:5;background:#2b2b2b;border-radius:12px;padding:6px 0;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #pmenu button{display:flex;gap:12px;align-items:center;width:100%;padding:12px 16px;text-align:left}
@@ -144,10 +142,10 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 #player>#pscrim{position:absolute;inset:0;z-index:4}
 .vlabel{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:500}
 .vlabel .ic{width:18px;height:18px}
-.vctl{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:280px}
+.vctl{display:flex;align-items:center;justify-content:center;gap:14px;width:100%}
 .vbtn{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);display:grid;place-items:center;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .vbtn:active{background:rgba(255,255,255,.24)}
-.vnum{font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;min-width:3ch;text-align:center}
+.vnum{font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;min-width:4ch;text-align:center}
 
 /* menu + log */
 #menu{position:fixed;top:54px;right:12px;z-index:70;background:#2b2b2b;border-radius:12px;padding:6px 0;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
@@ -254,8 +252,10 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <button class="round" id="rep" aria-label="Repeat"><svg class="ic"><use href="#i-repeat"/></svg></button>
     </div>
     <div class="vol">
-      <div class="vhead"><div class="vlabel"><svg class="ic"><use href="#i-vol"/></svg>TV volume</div><button class="vmute" id="vmute"><svg class="ic"><use href="#i-vol"/></svg><span>Mute</span></button></div>
+      <div class="vlabel"><svg class="ic"><use href="#i-vol"/></svg>TV volume</div>
+      <input id="vol" type="range" min="0" max="100" value="0" aria-label="TV volume">
       <div class="vctl">
+        <button class="vbtn" id="vmute" aria-label="Mute"><svg class="ic"><use href="#i-vol"/></svg></button>
         <button class="vbtn" id="vdown" aria-label="Volume down"><svg class="ic"><use href="#i-minus"/></svg></button>
         <div class="vnum" id="vnum">0</div>
         <button class="vbtn" id="vup" aria-label="Volume up"><svg class="ic"><use href="#i-add"/></svg></button>
@@ -753,12 +753,15 @@ function applyState(s) {
     $('#t0').textContent = fmt(s.pos);
   }
   $('#t1').textContent = fmt(s.dur);
-  if (volTarget === null) $('#vnum').textContent = s.vol;
+  if (volTarget === null) {
+    $('#vnum').textContent = s.vol;
+    setRange($('#vol'), s.vol, s.maxVol);
+  }
   if (s.vol > 0) lastVol = s.vol;
   const muted = (volTarget === null ? s.vol : volTarget) === 0;
   $('#vnum').classList.toggle('dim', muted);
   $('#vmute').classList.toggle('on', muted);
-  $('#vmute span').textContent = muted ? 'Unmute' : 'Mute';
+  $('#vmute').setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
   $('#vmute svg').innerHTML = '<use href="#i-' + (muted ? 'volmute' : 'vol') + '"/>';
   if (prevId !== s.id || lastMark !== s.id + '|' + s.playing) markCurrent();
   syncSession(s);
@@ -928,6 +931,7 @@ try { lastVol = +localStorage.getItem('usbmusic.vol') || 30; } catch (e) {}
 function sendVol(v, delay) {
   volTarget = v;
   $('#vnum').textContent = v;
+  setRange($('#vol'), v, st.maxVol || 100);
   clearTimeout(volSend);
   const done = () => { volTarget = null; };
   volSend = setTimeout(() => cmd('volume?v=' + v).then(done, done), delay);
@@ -940,6 +944,19 @@ function stepVol(d) {
     : Math.max(0, Math.min(st.maxVol || 100, base + d));
   sendVol(v, 150);
 }
+// Dragging the bar sends the level while you move (at most every 150 ms) and once more at the end.
+let volSentAt = 0;
+$('#vol').addEventListener('input', e => {
+  const v = +e.target.value;
+  volTarget = v;
+  $('#vnum').textContent = v;
+  setRange(e.target, v, +e.target.max);
+  const now = Date.now();
+  if (now - volSentAt > 150) { volSentAt = now; cmd('volume?v=' + v); }
+  clearTimeout(volSend);
+  const done = () => { volTarget = null; };
+  volSend = setTimeout(() => cmd('volume?v=' + volTarget).then(done, done), 200);
+});
 $('#vmute').onclick = () => {
   const cur = volTarget === null ? st.vol : volTarget;
   if (cur > 0) {
