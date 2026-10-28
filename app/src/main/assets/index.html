@@ -24,12 +24,13 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .logo{width:28px;height:28px;flex:none}
 .round{width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
 .round:active{background:var(--card)}
-.search{display:flex;align-items:center;gap:10px;height:40px;border-radius:8px;background:var(--card);padding:0 12px;color:var(--muted)}
+.search{display:flex;align-items:center;gap:10px;height:40px;border-radius:8px;background:var(--card);padding:0 12px;color:var(--muted);width:100%;text-align:left;font:400 16px Roboto,"Helvetica Neue",Arial,sans-serif}
+.search span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .search .ic{width:22px;height:22px}
 .search input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--text);font:400 16px Roboto,"Helvetica Neue",Arial,sans-serif;outline:none}
 .search input::placeholder{color:var(--muted)}
-#chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none}
-#chips::-webkit-scrollbar{display:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
 .chip{flex:none;height:32px;padding:0 12px;border-radius:8px;background:rgba(255,255,255,.1);color:var(--text);font-size:14px;font-weight:500}
 .chip.on{background:#fff;color:#000}
 #err{padding:6px 16px;color:#ff8a80;font-size:13px}
@@ -80,8 +81,11 @@ body.playing .pi .p-play{display:none}
 .sheet{position:fixed;inset:0;z-index:10;background:var(--bg);overflow-y:auto;transform:translateY(100%);visibility:hidden;transition:transform .28s ease,visibility 0s .28s}
 .sheet.open{transform:none;visibility:visible;transition:transform .28s ease}
 #detail{z-index:10;padding-bottom:110px}
-#detail .head{position:sticky;top:0;z-index:3;background:var(--bg);display:flex;align-items:center;gap:6px;padding:max(8px,env(safe-area-inset-top)) 12px 8px 4px;border-bottom:1px solid var(--line)}
-#detail .head .search{flex:1;min-width:0}
+.sheet .head{position:sticky;top:0;z-index:3;background:var(--bg);display:flex;align-items:center;gap:6px;padding:max(8px,env(safe-area-inset-top)) 12px 8px 4px;border-bottom:1px solid var(--line)}
+.sheet .head .search{flex:1;min-width:0}
+.sh{display:flex;justify-content:space-between;align-items:center;padding:20px 16px 6px;font-size:20px;font-weight:700;letter-spacing:-.3px}
+.sh button{font-size:14px;font-weight:500;color:var(--muted)}
+#sresults{padding-bottom:110px}
 #hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 24px 8px;background:linear-gradient(180deg,hsl(var(--h,0) 42% 16%) 0,var(--bg) 100%)}
 #hero .art{width:min(52vw,200px);border-radius:8px}
 #hero h2{margin:20px 0 4px;font-size:24px;line-height:30px;font-weight:700;letter-spacing:-.3px;overflow-wrap:anywhere}
@@ -92,7 +96,7 @@ body.playing .pi .p-play{display:none}
 .circ.big .ic{width:34px;height:34px}
 
 /* mini player */
-#mini{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0 auto;max-width:720px;background:var(--card);
+#mini{position:fixed;left:0;right:0;bottom:0;z-index:50;margin:0 auto;max-width:720px;background:var(--card);
   padding:8px 4px calc(10px + env(safe-area-inset-bottom)) 12px;display:flex;align-items:center;gap:12px}
 #mini .art{width:44px;height:44px;border-radius:4px}
 #mini .meta{flex:1;min-width:0;text-align:left}
@@ -102,7 +106,7 @@ body.playing .pi .p-play{display:none}
 #mini .round{width:44px;height:44px}
 
 /* full player */
-#player{z-index:30;background:linear-gradient(180deg,hsl(var(--h,0) 42% 22%) 0%,#0a0a0a 70%,var(--bg) 100%);display:flex;flex-direction:column;padding:max(10px,env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom));overflow:hidden}
+#player{z-index:60;background:linear-gradient(180deg,hsl(var(--h,0) 42% 22%) 0%,#0a0a0a 70%,var(--bg) 100%);display:flex;flex-direction:column;padding:max(10px,env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom));overflow:hidden}
 #pbg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(46px) saturate(1.3);opacity:.45;transform:scale(1.2);pointer-events:none}
 #player>*{position:relative}
 #player .top{display:flex;justify-content:space-between;align-items:center;height:44px;margin:0 -10px}
@@ -129,10 +133,10 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .vol .ic{width:20px;height:20px}
 
 /* menu + log */
-#menu{position:fixed;top:54px;right:12px;z-index:40;background:#2b2b2b;border-radius:12px;padding:6px 0;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#menu{position:fixed;top:54px;right:12px;z-index:70;background:#2b2b2b;border-radius:12px;padding:6px 0;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #menu button{display:flex;gap:12px;align-items:center;width:100%;padding:12px 16px;text-align:left}
 #menu button:active{background:var(--card)}
-#scrim{position:fixed;inset:0;z-index:35}
+#scrim{position:fixed;inset:0;z-index:69}
 #log{margin:0 16px 110px;padding:12px;border-radius:12px;background:var(--card);color:var(--muted);white-space:pre-wrap;font-size:12px}
 </style>
 </head>
@@ -162,8 +166,8 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="brand"><svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#f03"/><circle cx="12" cy="12" r="8.2" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M10 8.6v6.8l5.6-3.4z" fill="#fff"/></svg>USB Music</div>
       <button class="round" id="btnMenu" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button>
     </div>
-    <label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search songs, artists, albums" autocomplete="off"></label>
-    <nav id="chips">
+    <button class="search" id="openSearch" type="button"><svg class="ic"><use href="#i-search"/></svg><span>Search songs, artists, albums</span></button>
+    <nav id="chips" class="chips">
       <button class="chip on" data-tab="songs">Songs</button>
       <button class="chip" data-tab="albums">Albums</button>
       <button class="chip" data-tab="artists">Artists</button>
@@ -178,9 +182,23 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 
 <section id="detail" class="sheet" aria-label="Details">
   <div class="wrap">
-    <div class="head"><button class="round" id="detailBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="dq" type="search" placeholder="Search in this list" autocomplete="off"></label></div>
+    <div class="head"><button class="round" id="detailBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><button class="search" id="dsearch" type="button"><svg class="ic"><use href="#i-search"/></svg><span>Search songs, artists, albums</span></button></div>
     <div class="hero" id="hero"></div>
     <div id="detailList"></div>
+  </div>
+</section>
+
+<section id="searchsheet" class="sheet" aria-label="Search">
+  <div class="wrap">
+    <div class="head"><button class="round" id="sBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="sq" type="search" placeholder="Search songs, artists, albums" autocomplete="off"></label></div>
+    <nav class="chips" id="schips" style="padding:12px 16px">
+      <button class="chip on" data-st="all">All</button>
+      <button class="chip" data-st="songs">Songs</button>
+      <button class="chip" data-st="albums">Albums</button>
+      <button class="chip" data-st="artists">Artists</button>
+      <button class="chip" data-st="folders">Folders</button>
+    </nav>
+    <div id="sresults"></div>
   </div>
 </section>
 
@@ -507,14 +525,22 @@ function render() {
 
 /* ---------- detail screen ---------- */
 const detailStack = [];
+const layers = [];      // open screens above the main page, bottom to top: 'search' | 'detail' | 'player'
+let zTop = 10;
+function pushLayer(name, el) {
+  if (el) el.style.zIndex = ++zTop;
+  layers.push(name);
+  history.pushState({l: name}, '');
+}
+
 function openDetail(d) {
+  if (layers[layers.length - 1] === 'search') detailStack.length = 0;
   detailStack.push(d);
   showDetail(d);
   $('#detail').classList.add('open');
-  history.pushState({l: 'd'}, '');
+  pushLayer('detail', $('#detail'));
 }
 
-let dquery = '';
 function showDetail(d) {
   const all = d.allIds || d.ids;
   const hero = $('#hero');
@@ -533,33 +559,101 @@ function showDetail(d) {
   r.children[0].onclick = () => shufflePlay(all, scope, d.treePath);
   r.children[1].onclick = () => cmd('shuffle?on=0').then(() => play(all[0], scope, d.treePath));
   hero.append(h, l1, l2, r);
-  dquery = '';
-  $('#dq').value = '';
   renderDetailList(d);
   $('#detail').scrollTop = 0;
 }
 
 function renderDetailList(d) {
-  const q = dquery.trim().toLowerCase();
-  const has = (...xs) => !q || xs.some(x => (x || '').toLowerCase().includes(q));
   const list = $('#detailList');
   list.textContent = '';
-  const kids = (d.children || []).filter(n => has(n.name));
-  if (kids.length) {
+  if (d.children && d.children.length) {
     const box = document.createElement('div');
     list.append(box);
-    fill(box, kids, n => folderRow(n, false));
+    fill(box, d.children, n => folderRow(n, false));
   }
-  const ids = d.ids.filter(id => { const t = lib.tracks[id]; return has(t[0], t[2], t[3]); });
   const songs = document.createElement('div');
   list.append(songs);
-  fill(songs, ids, (id, i) => songRow(id, d.scope, i + 1, d.scope === 'album' ? lib.tracks[id][2] : undefined));
-  if (!kids.length && !ids.length) {
-    const m = document.createElement('div'); m.id = 'msg'; m.textContent = 'No match.';
-    list.append(m);
-  }
+  fill(songs, d.ids, (id, i) => songRow(id, d.scope, i + 1, d.scope === 'album' ? lib.tracks[id][2] : undefined));
   markCurrent();
 }
+
+/* ---------- global search ---------- */
+let sq = '', sTab = 'all';
+
+function albumRow(a) {
+  const b = document.createElement('button');
+  b.className = 'row folder';
+  b.append(makeArt(a.ids[0]));
+  const m = document.createElement('div'); m.className = 'meta';
+  const t = document.createElement('div'); t.className = 't'; t.textContent = a.name;
+  const s = document.createElement('div'); s.className = 's';
+  s.textContent = ['Album', a.artist].filter(Boolean).join(' \u2022 ');
+  m.append(t, s);
+  b.append(m);
+  b.onclick = () => openDetail({title: a.name, kind: 'Album', sub1: a.artist, ids: a.ids, scope: 'album'});
+  return b;
+}
+
+function renderSearch() {
+  const box = $('#sresults');
+  box.textContent = '';
+  const q = sq.trim().toLowerCase();
+  const note = text => { const m = document.createElement('div'); m.id = 'msg'; m.textContent = text; box.append(m); };
+  if (!q) { note('Search your whole drive: songs, albums, artists and folders.'); return; }
+  const has = (...xs) => xs.some(x => (x || '').toLowerCase().includes(q));
+  const songIds = [];
+  lib.tracks.forEach((t, id) => { if (has(t[0], t[2], t[3], t[1].split('/').pop())) songIds.push(id); });
+  const sections = [
+    ['songs', 'Songs', songIds, id => songRow(id, 'album'), 6],
+    ['albums', 'Albums', idx.albums.filter(a => has(a.name, a.artist)), albumRow, 4],
+    ['artists', 'Artists', idx.artists.filter(a => has(a.name)), a => groupRow(a, 'artist'), 3],
+    ['folders', 'Folders', idx.folderNodes.filter(f => has(f.name)), f => folderRow(f, true), 3],
+  ];
+  let any = false;
+  for (const [key, title, items, make, limit] of sections) {
+    if (sTab !== 'all' && sTab !== key) continue;
+    if (!items.length) continue;
+    any = true;
+    if (sTab === 'all') {
+      const h = document.createElement('div'); h.className = 'sh'; h.textContent = title;
+      if (items.length > limit) {
+        const more = document.createElement('button'); more.textContent = 'See all ' + items.length;
+        more.onclick = () => setSearchTab(key);
+        h.append(more);
+      }
+      box.append(h);
+    }
+    const c = document.createElement('div');
+    box.append(c);
+    fill(c, sTab === 'all' ? items.slice(0, limit) : items, make);
+  }
+  if (!any) note('No results for \u201c' + sq.trim() + '\u201d.');
+  markCurrent();
+}
+
+function setSearchTab(t) {
+  sTab = t;
+  document.querySelectorAll('#schips .chip').forEach(x => x.classList.toggle('on', x.dataset.st === t));
+  renderSearch();
+  $('#searchsheet').scrollTop = 0;
+}
+
+function openSearch() {
+  const el = $('#searchsheet');
+  if (!el.classList.contains('open')) {
+    el.classList.add('open');
+    pushLayer('search', el);
+  } else {
+    el.style.zIndex = ++zTop;
+  }
+  renderSearch();
+  $('#sq').focus();
+}
+$('#openSearch').onclick = openSearch;
+$('#dsearch').onclick = openSearch;
+$('#sBack').onclick = () => history.back();
+$('#sq').addEventListener('input', e => { sq = e.target.value; renderSearch(); });
+for (const c of document.querySelectorAll('#schips .chip')) c.onclick = () => setSearchTab(c.dataset.st);
 
 /* ---------- playback state ---------- */
 let lastMark = '';
@@ -691,17 +785,15 @@ function shufflePlay(ids, scope, path) {
 }
 
 /* ---------- wiring ---------- */
-for (const c of document.querySelectorAll('.chip')) {
+for (const c of document.querySelectorAll('#chips .chip')) {
   c.onclick = () => {
     tab = c.dataset.tab;
-    document.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c));
+    document.querySelectorAll('#chips .chip').forEach(x => x.classList.toggle('on', x === c));
     $('#log').hidden = true;
     render();
     window.scrollTo(0, 0);
   };
 }
-$('#q').addEventListener('input', e => { query = e.target.value; render(); });
-$('#dq').addEventListener('input', e => { dquery = e.target.value; renderDetailList(detailStack[detailStack.length - 1]); });
 
 const menu = $('#menu'), scrim = $('#scrim');
 const closeMenu = () => { menu.hidden = true; scrim.hidden = true; };
@@ -720,14 +812,19 @@ $('#mLog').onclick = async () => {
 
 $('#mopen').onclick = () => {
   $('#player').classList.add('open');
-  history.pushState({l: 'p'}, '');
+  pushLayer('player');
 };
 $('#pclose').onclick = () => history.back();
 $('#detailBack').onclick = () => history.back();
 window.addEventListener('popstate', () => {
-  if ($('#player').classList.contains('open')) $('#player').classList.remove('open');
-  else if (detailStack.length > 1) { detailStack.pop(); showDetail(detailStack[detailStack.length - 1]); }
-  else if ($('#detail').classList.contains('open')) { detailStack.length = 0; $('#detail').classList.remove('open'); }
+  const top = layers.pop();
+  if (top === 'player') $('#player').classList.remove('open');
+  else if (top === 'search') { $('#searchsheet').classList.remove('open'); sq = ''; $('#sq').value = ''; sTab = 'all'; setSearchTab('all'); }
+  else if (top === 'detail') {
+    detailStack.pop();
+    if (detailStack.length && layers.includes('detail')) showDetail(detailStack[detailStack.length - 1]);
+    else { detailStack.length = 0; $('#detail').classList.remove('open'); }
+  }
 });
 
 $('#toggle').onclick = $('#mtoggle').onclick = () => cmd('toggle');
