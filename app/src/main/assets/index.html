@@ -255,7 +255,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="vlabel"><svg class="ic"><use href="#i-vol"/></svg>TV volume</div>
       <input id="vol" type="range" min="0" max="100" value="0" aria-label="TV volume">
       <div class="vctl">
-        <button class="vbtn" id="vmute" aria-label="Mute"><svg class="ic"><use href="#i-vol"/></svg></button>
+        <button class="vbtn" id="vmute" aria-label="Mute" hidden><svg class="ic"><use href="#i-vol"/></svg></button>
         <button class="vbtn" id="vdown" aria-label="Volume down"><svg class="ic"><use href="#i-minus"/></svg></button>
         <div class="vnum" id="vnum">0</div>
         <button class="vbtn" id="vup" aria-label="Volume up"><svg class="ic"><use href="#i-add"/></svg></button>
@@ -939,7 +939,6 @@ function sendVol(v, delay) {
   volSend = setTimeout(() => cmd('volume?v=' + v).then(done, done), delay);
 }
 function stepVol(d) {
-  if (st.muted) { cmd('mute?on=0'); return; }   // any volume tap first brings the sound back
   const base = volTarget === null ? st.vol : volTarget;
   sendVol(Math.max(0, Math.min(st.maxVol || 100, base + d)), 150);
 }
@@ -947,7 +946,6 @@ function stepVol(d) {
 let volSentAt = 0, unmuting = false;
 $('#vol').addEventListener('input', e => {
   const v = +e.target.value;
-  if (st.muted && !unmuting) { unmuting = true; cmd('mute?on=0').then(() => { unmuting = false; }); }
   volTarget = v;
   $('#vnum').textContent = v;
   setRange(e.target, v, +e.target.max);
