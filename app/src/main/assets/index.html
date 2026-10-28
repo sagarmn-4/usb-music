@@ -117,14 +117,18 @@ body.playing .pi .p-play{display:none}
 #pstage{flex:1;display:grid;place-items:center;min-height:0;margin:8px 0;container-type:size}
 #pstage .art{width:min(100cqw,100cqh,420px);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .pwrap{position:relative;width:min(100cqw,100cqh,420px);aspect-ratio:1}
-.disc{width:100%;height:100%;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#121212 0 2px,#1d1d1d 2px 3px);display:grid;place-items:center;box-shadow:0 18px 50px rgba(0,0,0,.55);animation:spin 7s linear infinite;animation-play-state:paused;transition:opacity .25s}
+.disc{position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#121212 0 2px,#1d1d1d 2px 3px);box-shadow:0 18px 50px rgba(0,0,0,.55);animation:spin 7s linear infinite;animation-play-state:paused;transition:opacity .25s}
 body.playing .disc{animation-play-state:running}
-.disc .lab{width:36%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-size:clamp(30px,13vw,72px);font-weight:500;color:#fff}
+.lab{position:absolute;left:32%;top:32%;width:36%;height:36%;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:opacity .25s}
+.bars{display:flex;align-items:flex-end;justify-content:center;gap:5%;width:52%;height:44%}
+.bars span{flex:1;background:#fff;border-radius:2px;height:30%;animation:eq .9s ease-in-out infinite;animation-play-state:paused}
+body.playing .bars span{animation-play-state:running}
 .pwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px;opacity:0;transition:opacity .25s;box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .pwrap.has img{opacity:1}
-.pwrap.has .disc{opacity:0}
+.pwrap.has .disc,.pwrap.has .lab{opacity:0}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.disc{animation:none}}
+@keyframes eq{0%,100%{height:18%}50%{height:100%}}
+@media (prefers-reduced-motion:reduce){.disc,.bars span{animation:none}}
 #ptitle{font-size:22px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #psub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
 .times{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
@@ -338,19 +342,24 @@ function spanText(ms) {
   const h = Math.floor(m / 60), r = m % 60;
   return h + (h === 1 ? ' hour' : ' hours') + (r ? ', ' + r + ' minutes' : '');
 }
-// Player cover: the embedded art when the song has it, otherwise a record that spins while it plays.
+// Player cover: the embedded art when the song has it, otherwise a record. The disc turns while the
+// song plays; the label in the middle stays still and carries a small equalizer.
 function playerArt(id) {
   const w = document.createElement('div');
   w.className = 'pwrap';
   const t = lib.tracks[id];
   if (!t) return w;
-  const name = t[1].split('/').filter(Boolean).pop() || t[1];
   const disc = document.createElement('div'); disc.className = 'disc';
   const lab = document.createElement('div'); lab.className = 'lab';
-  lab.textContent = (name.trim()[0] || '\u266a').toUpperCase();
   lab.style.background = 'hsl(' + hueOf(id) + ' 45% 34%)';
-  disc.append(lab);
-  w.append(disc);
+  const bars = document.createElement('div'); bars.className = 'bars';
+  [-.1, -.6, -.3, -.8, -.45].forEach(d => {
+    const b = document.createElement('span');
+    b.style.animationDelay = d + 's';
+    bars.append(b);
+  });
+  lab.append(bars);
+  w.append(disc, lab);
   const key = t[3] ? t[1] + '|' + t[3] : '#' + id;
   if (!noArt.has(key)) {
     const img = new Image();
