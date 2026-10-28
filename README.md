@@ -6,7 +6,9 @@ Plays the music on a USB drive plugged into the TV, through the TV speakers. A p
 
 - `MusicService` (foreground service on the TV) scans the USB volumes under `/storage` for mp3, m4a, aac, flac, wav, ogg, opus, mid and amr files. If that finds nothing it falls back to MediaStore.
 - It plays with `MediaPlayer` and serves a tiny HTTP server on port 8080 (next free port up to 8089).
-- The phone opens `http://<tv-ip>:8080`. The page is laid out like YouTube Music: Songs, Albums, Artists and Folders tabs with cover art, search, a mini player that opens a full now-playing screen, and TV volume.
+- The phone opens `http://<tv-ip>:8080`. The page is laid out like YouTube Music: Folders, Albums, Songs and Artists tabs, a global search, a mini player that opens a full now-playing screen (embedded cover art, or a spinning record when a song has none), lock-screen controls, "Go to folder", and TV volume with − and +.
+- The page is `app/src/main/assets/index.html`. `push-page.ps1` sends an edited copy to the TV (debug build, `run-as`) so it can change without reinstalling; a reinstall goes back to the page built into the APK.
+- TV volume goes through HDMI-CEC to the receiver, which only follows small steps: big jumps and a volume of 0 get put back. The page therefore has no Mute button.
 - The TV screen shows the address and a QR code to scan with the phone camera. The service starts on boot and rescans when a drive is mounted or removed.
 - There is no password. Anyone on your Wi-Fi who knows the address can control the music.
 
@@ -34,3 +36,5 @@ Plug in the USB drive first (or tap Rescan USB on the TV screen or the phone pag
 
 - Native phone app (install on the phone instead of using the browser).
 - PIN for the phone page.
+- On/off switch on the TV screen (off by default): stops the service and the boot start.
+- Control the Yamaha receiver directly for a true mute and exact volume (needs its address; guard with a volume ceiling).

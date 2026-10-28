@@ -269,7 +269,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="vlabel"><svg class="ic"><use href="#i-vol"/></svg>TV volume</div>
       <div class="vbar" id="vol" role="meter" aria-label="TV volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
       <div class="vctl">
-        <button class="vbtn" id="vmute" aria-label="Mute" hidden><svg class="ic"><use href="#i-vol"/></svg></button>
         <button class="vbtn" id="vdown" aria-label="Volume down"><svg class="ic"><use href="#i-minus"/></svg></button>
         <div class="vnum" id="vnum">0</div>
         <button class="vbtn" id="vup" aria-label="Volume up"><svg class="ic"><use href="#i-add"/></svg></button>
@@ -806,9 +805,6 @@ function applyState(s) {
     setBars(shown, s.maxVol);
   }
   $('#vnum').classList.toggle('dim', muted);
-  $('#vmute').classList.toggle('on', muted);
-  $('#vmute').setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
-  $('#vmute svg').innerHTML = '<use href="#i-' + (muted ? 'volmute' : 'vol') + '"/>';
   if (prevId !== s.id || lastMark !== s.id + '|' + s.playing) markCurrent();
   syncSession(s);
 }
@@ -995,7 +991,6 @@ function setBars(v, max) {
   el.setAttribute('aria-valuenow', v);
 }
 
-$('#vmute').onclick = () => cmd('mute?on=' + (st.muted ? 0 : 1));
 function holdStep(btn, d) {
   let start = null, rep = null;
   const stop = () => { clearTimeout(start); clearInterval(rep); };

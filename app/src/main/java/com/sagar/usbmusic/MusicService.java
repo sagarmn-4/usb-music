@@ -570,15 +570,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                     case "volume":
                         setVolume(intArg(q, "v", audio.getStreamVolume(AudioManager.STREAM_MUSIC)));
                         break;
-                    case "mute":
-                        // The TV is wired to a receiver over HDMI-CEC. Volume 0, ADJUST_MUTE and
-                        // ADJUST_UNMUTE only change the TV side and the receiver puts them back; only
-                        // ADJUST_TOGGLE_MUTE is forwarded to the receiver, like the remote's mute key.
-                        if (audio.isStreamMute(AudioManager.STREAM_MUSIC) != "1".equals(q.get("on"))) {
-                            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,
-                                    AudioManager.ADJUST_TOGGLE_MUTE, AudioManager.FLAG_SHOW_UI);
-                        }
-                        break;
                     case "rescan":
                         rescan();
                         break;
