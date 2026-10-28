@@ -250,7 +250,7 @@ const icon = n => '<svg class="ic"><use href="#i-' + n + '"/></svg>';
 const setIcon = (el, n) => { el.innerHTML = icon(n); };
 
 let lib = {ver: -1, tracks: []};
-let idx = {albums: [], artists: [], folders: []};
+let idx = {albums: [], artists: [], tree: {name: '', children: new Map(), ids: [], all: []}, folderNodes: []};
 let st = {};
 let tab = 'folders';
 let detail = null;           // {title, sub, ids, scope, artId}
