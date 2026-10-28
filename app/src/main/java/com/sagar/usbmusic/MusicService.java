@@ -517,6 +517,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         o.put("repeat", repeat == REPEAT_ALL ? "all" : repeat == REPEAT_ONE ? "one" : "off");
         o.put("vol", audio.getStreamVolume(AudioManager.STREAM_MUSIC));
         o.put("maxVol", audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+        o.put("muted", audio.isStreamMute(AudioManager.STREAM_MUSIC));
         o.put("count", library.size());
         o.put("ver", version);
         o.put("scanning", scanning);
@@ -568,6 +569,13 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                         break;
                     case "volume":
                         setVolume(intArg(q, "v", audio.getStreamVolume(AudioManager.STREAM_MUSIC)));
+                        break;
+                    case "mute":
+                        // A real system mute (not volume 0): the TV is wired to a receiver over HDMI-CEC,
+                        // which puts the volume back whenever it is only set to 0.
+                        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                                "1".equals(q.get("on")) ? AudioManager.ADJUST_MUTE : AudioManager.ADJUST_UNMUTE,
+                                AudioManager.FLAG_SHOW_UI);
                         break;
                     case "rescan":
                         rescan();

@@ -753,12 +753,14 @@ function applyState(s) {
     $('#t0').textContent = fmt(s.pos);
   }
   $('#t1').textContent = fmt(s.dur);
-  if (volTarget === null) {
-    $('#vnum').textContent = s.vol;
-    setRange($('#vol'), s.vol, s.maxVol);
-  }
+  // While muted the system reports volume 0; keep showing the level it will return to.
   if (s.vol > 0) lastVol = s.vol;
-  const muted = (volTarget === null ? s.vol : volTarget) === 0;
+  const muted = !!s.muted;
+  if (volTarget === null) {
+    const shown = muted ? lastVol : s.vol;
+    $('#vnum').textContent = shown;
+    setRange($('#vol'), shown, s.maxVol);
+  }
   $('#vnum').classList.toggle('dim', muted);
   $('#vmute').classList.toggle('on', muted);
   $('#vmute').setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
@@ -937,17 +939,15 @@ function sendVol(v, delay) {
   volSend = setTimeout(() => cmd('volume?v=' + v).then(done, done), delay);
 }
 function stepVol(d) {
+  if (st.muted) { cmd('mute?on=0'); return; }   // any volume tap first brings the sound back
   const base = volTarget === null ? st.vol : volTarget;
-  // from muted, + goes back to the level before muting
-  const v = base === 0 && d > 0 && lastVol > 0
-    ? lastVol
-    : Math.max(0, Math.min(st.maxVol || 100, base + d));
-  sendVol(v, 150);
+  sendVol(Math.max(0, Math.min(st.maxVol || 100, base + d)), 150);
 }
 // Dragging the bar sends the level while you move (at most every 150 ms) and once more at the end.
-let volSentAt = 0;
+let volSentAt = 0, unmuting = false;
 $('#vol').addEventListener('input', e => {
   const v = +e.target.value;
+  if (st.muted && !unmuting) { unmuting = true; cmd('mute?on=0').then(() => { unmuting = false; }); }
   volTarget = v;
   $('#vnum').textContent = v;
   setRange(e.target, v, +e.target.max);
@@ -957,16 +957,7 @@ $('#vol').addEventListener('input', e => {
   const done = () => { volTarget = null; };
   volSend = setTimeout(() => cmd('volume?v=' + volTarget).then(done, done), 200);
 });
-$('#vmute').onclick = () => {
-  const cur = volTarget === null ? st.vol : volTarget;
-  if (cur > 0) {
-    lastVol = cur;
-    try { localStorage.setItem('usbmusic.vol', String(cur)); } catch (e) {}
-    sendVol(0, 0);
-  } else {
-    sendVol(lastVol || 30, 0);
-  }
-};
+$('#vmute').onclick = () => cmd('mute?on=' + (st.muted ? 0 : 1));
 function holdStep(btn, d) {
   let start = null, rep = null;
   const stop = () => { clearTimeout(start); clearInterval(rep); };
