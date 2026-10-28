@@ -114,8 +114,8 @@ body.playing .pi .p-play{display:none}
 #player>*{position:relative}
 #player .top{display:flex;justify-content:space-between;align-items:center;height:44px;margin:0 -10px}
 #player .label{font-size:13px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
-#pstage{flex:1;display:grid;place-items:center;min-height:0;padding:8px 0}
-#pstage .art{width:min(100%,46vh,420px);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+#pstage{flex:1;display:grid;place-items:center;min-height:0;margin:8px 0;container-type:size}
+#pstage .art{width:min(100cqw,100cqh,420px);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
 #ptitle{font-size:22px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #psub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
 .times{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
@@ -132,8 +132,13 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .ctl .round.skip .ic{width:34px;height:34px}
 .ctl .main{width:68px;height:68px;border-radius:50%;background:#fff;color:var(--bg);display:grid;place-items:center}
 .ctl .main .ic{width:36px;height:36px}
-.vol{display:flex;align-items:center;gap:10px;color:var(--muted);margin-top:10px;font-size:13px}
-.vol .ic{width:20px;height:20px}
+.vol{margin-top:26px;padding:12px 16px 14px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;gap:6px}
+.vlabel{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:500}
+.vlabel .ic{width:18px;height:18px}
+.vctl{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:280px}
+.vbtn{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);display:grid;place-items:center;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.vbtn:active{background:rgba(255,255,255,.24)}
+.vnum{font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;min-width:3ch;text-align:center}
 
 /* menu + log */
 #menu{position:fixed;top:54px;right:12px;z-index:70;background:#2b2b2b;border-radius:12px;padding:6px 0;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
@@ -161,7 +166,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
   <symbol id="i-log" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></symbol>
-  <symbol id="i-close"viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></symbol>
+  <symbol id="i-add" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -234,7 +241,14 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <button class="round skip" id="next" aria-label="Next"><svg class="ic"><use href="#i-next"/></svg></button>
       <button class="round" id="rep" aria-label="Repeat"><svg class="ic"><use href="#i-repeat"/></svg></button>
     </div>
-    <div class="vol"><svg class="ic"><use href="#i-vol"/></svg><input id="vol" type="range" min="0" max="15" value="0"><span>TV</span></div>
+    <div class="vol">
+      <div class="vlabel"><svg class="ic"><use href="#i-vol"/></svg>TV volume</div>
+      <div class="vctl">
+        <button class="vbtn" id="vdown" aria-label="Volume down"><svg class="ic"><use href="#i-minus"/></svg></button>
+        <div class="vnum" id="vnum">0</div>
+        <button class="vbtn" id="vup" aria-label="Volume up"><svg class="ic"><use href="#i-add"/></svg></button>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -722,7 +736,7 @@ function applyState(s) {
     $('#t0').textContent = fmt(s.pos);
   }
   $('#t1').textContent = fmt(s.dur);
-  if (!volDrag) setRange($('#vol'), s.vol, s.maxVol);
+  if (volTarget === null) $('#vnum').textContent = s.vol;
   if (prevId !== s.id || lastMark !== s.id + '|' + s.playing) markCurrent();
   syncSession(s);
 }
@@ -853,8 +867,29 @@ $('#seek').addEventListener('input', e => {
   $('#t0').textContent = fmt(+e.target.value);
 });
 $('#seek').addEventListener('change', e => { cmd('seek?ms=' + e.target.value).then(() => { seeking = false; }); });
-$('#vol').addEventListener('input', e => { volDrag = true; setRange(e.target, +e.target.value, +e.target.max); });
-$('#vol').addEventListener('change', e => { cmd('volume?v=' + e.target.value).then(() => { volDrag = false; }); });
+// TV volume: tap for one step, hold to keep going. Steps are batched into one request.
+let volTarget = null, volSend = null;
+function stepVol(d) {
+  const v = Math.max(0, Math.min(st.maxVol || 100, (volTarget === null ? st.vol : volTarget) + d));
+  volTarget = v;
+  $('#vnum').textContent = v;
+  clearTimeout(volSend);
+  volSend = setTimeout(() => cmd('volume?v=' + v).then(() => { volTarget = null; }, () => { volTarget = null; }), 150);
+}
+function holdStep(btn, d) {
+  let start = null, rep = null;
+  const stop = () => { clearTimeout(start); clearInterval(rep); };
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    stop();
+    stepVol(d);
+    start = setTimeout(() => { rep = setInterval(() => stepVol(d), 110); }, 400);
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+holdStep($('#vdown'), -1);
+holdStep($('#vup'), 1);
 
 function poll() { api('state').then(applyState).catch(() => { $('#err').textContent = 'Cannot reach the TV'; }); }
 render();
