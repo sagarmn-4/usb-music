@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
@@ -52,7 +53,7 @@ public class MainActivity extends Activity {
                 status.setText(svc.summary().trim());
                 if (!address.equals(qrFor) && svc.port() > 0) {
                     qrFor = address;
-                    qr.setImageBitmap(makeQr(address, dp(240)));
+                    qr.setImageBitmap(makeQr(address, dp(160)));
                 }
             }
             handler.postDelayed(this, 1000);
@@ -61,55 +62,60 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        int pad = dp(56);
         LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.HORIZONTAL);
         root.setBackgroundColor(BG);
-        root.setPadding(pad, dp(32), pad, dp(32));
-        root.setGravity(Gravity.CENTER_VERTICAL);
+        root.setGravity(Gravity.CENTER);
+        root.setPadding(dp(24), dp(24), dp(24), dp(24));
 
-        // ---- left: brand, address, status, buttons
+        // One compact panel in the middle of the screen: info on the left, QR code on the right.
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.HORIZONTAL);
+        panel.setGravity(Gravity.CENTER_VERTICAL);
+        panel.setBackground(round(CARD, 24, 0, 0));
+        panel.setPadding(dp(32), dp(28), dp(32), dp(28));
+        root.addView(panel, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        // ---- left: brand, headline, address, status, buttons
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        left.setGravity(Gravity.CENTER_VERTICAL);
-        root.addView(left, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        panel.addView(left, new LinearLayout.LayoutParams(dp(330), LinearLayout.LayoutParams.WRAP_CONTENT));
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.HORIZONTAL);
         brand.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_launcher);
-        brand.addView(logo, new LinearLayout.LayoutParams(dp(52), dp(52)));
-        TextView name = text("USB Music", 30, TEXT, true);
-        name.setPadding(dp(16), 0, 0, 0);
+        brand.addView(logo, new LinearLayout.LayoutParams(dp(26), dp(26)));
+        TextView name = text("USB Music", 14, MUTED, true);
+        name.setPadding(dp(10), 0, 0, 0);
         brand.addView(name);
         left.addView(brand);
 
-        TextView headline = text("Play from your phone", 40, TEXT, true);
-        headline.setPadding(0, dp(24), 0, dp(4));
+        TextView headline = text("Play from your phone", 22, TEXT, true);
+        headline.setPadding(0, dp(18), 0, dp(2));
         left.addView(headline);
-        left.addView(text("Scan the code, or open this address in your phone's browser.", 18, MUTED, false));
+        left.addView(text("Scan the code, or open this address in your phone's browser.", 12, MUTED, false));
 
-        url = text("starting…", 30, TEAL, true);
-        url.setBackground(round(CARD, 16, 0, 0));
-        url.setPadding(dp(22), dp(14), dp(22), dp(14));
+        url = text("starting\u2026", 17, TEAL, true);
+        url.setBackground(round(BG, 12, 0, 0));
+        url.setPadding(dp(14), dp(8), dp(14), dp(8));
         LinearLayout.LayoutParams up = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        up.topMargin = dp(20);
+        up.topMargin = dp(14);
         left.addView(url, up);
-        TextView wifi = text("Phone and TV need to be on the same Wi-Fi.", 15, MUTED, false);
-        wifi.setPadding(0, dp(8), 0, dp(20));
+        TextView wifi = text("Phone and TV need to be on the same Wi-Fi.", 11, MUTED, false);
+        wifi.setPadding(0, dp(6), 0, dp(14));
         left.addView(wifi);
 
-        status = text("", 20, TEXT, false);
-        status.setBackground(round(CARD, 16, 0, 0));
-        status.setPadding(dp(22), dp(16), dp(22), dp(16));
-        left.addView(status, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        status = text("", 12, TEXT, false);
+        status.setMaxLines(4);
+        status.setEllipsize(TextUtils.TruncateAt.END);
+        left.addView(status);
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setPadding(0, dp(24), 0, 0);
+        buttons.setPadding(0, dp(16), 0, 0);
         TextView play = pill("Play / Pause", true);
         play.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -127,7 +133,7 @@ public class MainActivity extends Activity {
         buttons.addView(play);
         LinearLayout.LayoutParams gap = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        gap.leftMargin = dp(14);
+        gap.leftMargin = dp(10);
         buttons.addView(rescan, gap);
         left.addView(buttons);
 
@@ -137,17 +143,17 @@ public class MainActivity extends Activity {
         right.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rp.leftMargin = dp(48);
-        root.addView(right, rp);
+        rp.leftMargin = dp(36);
+        panel.addView(right, rp);
 
         FrameCard qrCard = new FrameCard(this);
         qr = new ImageView(this);
         qr.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        qrCard.addView(qr, new LinearLayout.LayoutParams(dp(240), dp(240)));
+        qrCard.addView(qr, new LinearLayout.LayoutParams(dp(128), dp(128)));
         right.addView(qrCard);
-        TextView scan = text("Scan to open", 18, MUTED, false);
+        TextView scan = text("Scan to open", 11, MUTED, false);
         scan.setGravity(Gravity.CENTER);
-        scan.setPadding(0, dp(14), 0, 0);
+        scan.setPadding(0, dp(8), 0, 0);
         right.addView(scan);
 
         setContentView(root);
@@ -193,8 +199,8 @@ public class MainActivity extends Activity {
         FrameCard(android.content.Context c) {
             super(c);
             setGravity(Gravity.CENTER);
-            setBackground(round(Color.WHITE, 24, 0, 0));
-            setPadding(dp(20), dp(20), dp(20), dp(20));
+            setBackground(round(Color.WHITE, 14, 0, 0));
+            setPadding(dp(10), dp(10), dp(10), dp(10));
         }
     }
 
@@ -220,17 +226,17 @@ public class MainActivity extends Activity {
 
     /** A rounded button that shows a bright outline when the TV remote focuses it. */
     private TextView pill(String label, boolean primary) {
-        TextView t = text(label, 20, primary ? BG : TEXT, true);
+        TextView t = text(label, 13, primary ? BG : TEXT, true);
         t.setGravity(Gravity.CENTER);
-        t.setPadding(dp(30), dp(14), dp(30), dp(14));
+        t.setPadding(dp(18), dp(8), dp(18), dp(8));
         t.setFocusable(true);
         t.setClickable(true);
         StateListDrawable bg = new StateListDrawable();
         bg.addState(new int[]{android.R.attr.state_focused},
-                round(primary ? TEAL : CARD, 40, TEXT, 3));
+                round(primary ? TEAL : BG, 20, TEXT, 2));
         bg.addState(new int[]{android.R.attr.state_pressed},
-                round(primary ? 0xFF1FB3A1 : LINE, 40, 0, 0));
-        bg.addState(new int[]{}, primary ? round(TEAL, 40, 0, 0) : round(CARD, 40, LINE, 1.5f));
+                round(primary ? 0xFF1FB3A1 : LINE, 20, 0, 0));
+        bg.addState(new int[]{}, primary ? round(TEAL, 20, 0, 0) : round(BG, 20, LINE, 1f));
         t.setBackground(bg);
         return t;
     }
