@@ -66,6 +66,36 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private Track scopeRef;
     /** Folder path for the "tree" scope: that folder and everything below it. */
     private String scopePath = "";
+
+    /** Songs the user queued; they play before the rest of the queue. */
+    private final List<Track> userQueue = new ArrayList<>();
+    /** How many leading userQueue entries were added with "play next" (they stay ahead of "add to queue"). */
+    private int nextCount;
+    /** True while the current song came from userQueue; qpos then still points at the song before it. */
+    private boolean fromUser;
+    /** Fade between songs in seconds: 0 (off), 2, 5 or 10. */
+    private int fadeSec;
+    private boolean fadeInThis;
+    private final Runnable fadeTick = new Runnable() {
+        @Override public void run() {
+            if (fadeSec <= 0) return;
+            float vol = 1f;
+            try {
+                if (prepared && mp != null && mp.isPlaying()) {
+                    int dur = mp.getDuration();
+                    int pos = mp.getCurrentPosition();
+                    if (dur > 0) {
+                        long ms = Math.min(fadeSec * 1000L, dur / 3);
+                        if (fadeInThis && pos < ms) vol = Math.min(vol, pos / (float) ms);
+                        if (dur - pos < ms && hasNextTrack()) vol = Math.min(vol, (dur - pos) / (float) ms);
+                    }
+                    mp.setVolume(vol, vol);
+                }
+            } catch (Exception ignored) {
+            }
+            main.postDelayed(this, 100);
+        }
+    };
     private int qpos = -1;
     private Track current;
 
@@ -117,6 +147,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
 
         covers = new CoverFetcher(this, this);
+        fadeSec = getSharedPreferences("usbmusic", MODE_PRIVATE).getInt("fade", 0);
+        if (fadeSec > 0) main.post(fadeTick);
         server = new WebServer(this, this);
         if (!server.start()) lastError = "Could not open a network port";
 
@@ -148,6 +180,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             unregisterReceiver(storageReceiver);
         } catch (Exception ignored) {
         }
+        main.removeCallbacks(fadeTick);
         if (server != null) server.stop();
         releasePlayer();
         if (wifiLock != null && wifiLock.isHeld()) wifiLock.release();
@@ -203,6 +236,14 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
         queue.clear();
         queue.addAll(kept);
+        List<Track> keptUser = new ArrayList<>();
+        for (Track t : userQueue) {
+            Track n = bySource.get(t.source);
+            if (n != null) keptUser.add(n);
+        }
+        userQueue.clear();
+        userQueue.addAll(keptUser);
+        nextCount = Math.min(nextCount, userQueue.size());
         if (current != null) {
             Track n = bySource.get(current.source);
             if (n == null) {
@@ -276,6 +317,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     }
 
     private void startTrack(Track t) {
+        fromUser = false;
+        fadeInThis = false;
         releasePlayer();
         current = t;
         prepared = false;
@@ -330,6 +373,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         prepared = true;
         errorStreak = 0;
         if (wantPlay) {
+            if (fadeSec > 0 && fadeInThis) m.setVolume(0f, 0f);
             m.start();
         }
         updateNotification();
@@ -353,6 +397,14 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     }
 
     private void advance(boolean auto) {
+        if (!userQueue.isEmpty()) {
+            Track n = userQueue.remove(0);
+            if (nextCount > 0) nextCount--;
+            startTrack(n);
+            fromUser = true;
+            fadeInThis = true;
+            return;
+        }
         if (queue.isEmpty()) return;
         int n = qpos + 1;
         if (n >= queue.size()) {
@@ -380,6 +432,82 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
         qpos = n;
         startTrack(queue.get(n));
+        fadeInThis = true;
+    }
+
+    // ---- queue ("up next") and fade ------------------------------------------------------
+
+    /** Songs that will play after the current one, in order. */
+    private List<Track> upcoming() {
+        List<Track> l = new ArrayList<>(userQueue);
+        for (int i = qpos + 1; i < queue.size(); i++) l.add(queue.get(i));
+        return l;
+    }
+
+    private boolean hasNextTrack() {
+        if (repeat == REPEAT_ONE) return false;
+        return !userQueue.isEmpty() || qpos + 1 < queue.size() || (repeat == REPEAT_ALL && queue.size() > 1);
+    }
+
+    private void enqueue(int id, boolean next) {
+        if (id < 0 || id >= library.size()) return;
+        Track t = library.get(id);
+        if (current == null) {
+            playId(id, "album", null);
+            return;
+        }
+        if (next) {
+            userQueue.add(Math.min(nextCount, userQueue.size()), t);
+            nextCount++;
+        } else {
+            userQueue.add(t);
+        }
+    }
+
+    /** Makes {@code order} the new upcoming order; the part of the queue already played stays. */
+    private void setUpcoming(List<Track> order) {
+        while (queue.size() > qpos + 1) queue.remove(queue.size() - 1);
+        queue.addAll(order);
+        userQueue.clear();
+        nextCount = 0;
+    }
+
+    private void queueMove(int from, int to) {
+        List<Track> l = upcoming();
+        if (from < 0 || from >= l.size() || to < 0 || to >= l.size() || from == to) return;
+        l.add(to, l.remove(from));
+        setUpcoming(l);
+    }
+
+    private void queueRemove(int i) {
+        List<Track> l = upcoming();
+        if (i < 0 || i >= l.size()) return;
+        l.remove(i);
+        setUpcoming(l);
+    }
+
+    private JSONObject queueJson() throws JSONException {
+        List<Track> l = upcoming();
+        JSONArray items = new JSONArray();
+        for (int i = 0; i < Math.min(l.size(), 200); i++) {
+            Track t = l.get(i);
+            items.put(new JSONArray().put(library.indexOf(t)).put(t.title).put(t.artist).put(t.durationMs));
+        }
+        return new JSONObject().put("total", l.size()).put("items", items);
+    }
+
+    private void setFade(int seconds) {
+        fadeSec = seconds == 2 || seconds == 5 || seconds == 10 ? seconds : 0;
+        getSharedPreferences("usbmusic", MODE_PRIVATE).edit().putInt("fade", fadeSec).apply();
+        main.removeCallbacks(fadeTick);
+        if (fadeSec > 0) {
+            main.post(fadeTick);
+        } else if (prepared && mp != null) {
+            try {
+                mp.setVolume(1f, 1f);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private void togglePlay() {
@@ -419,7 +547,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             }
         } catch (Exception ignored) {
         }
-        int p = qpos - 1;
+        int p = fromUser ? qpos : qpos - 1;
         if (p < 0) p = repeat == REPEAT_ALL ? queue.size() - 1 : 0;
         if (p < 0 || queue.isEmpty()) return;
         qpos = p;
@@ -523,6 +651,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         o.put("vol", audio.getStreamVolume(AudioManager.STREAM_MUSIC));
         o.put("maxVol", audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
         o.put("muted", audio.isStreamMute(AudioManager.STREAM_MUSIC));
+        o.put("fade", fadeSec);
+        o.put("upnext", userQueue.size() + Math.max(0, queue.size() - qpos - 1));
         o.put("count", library.size());
         o.put("ver", version);
         o.put("art", artVersion);
@@ -577,6 +707,26 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                         break;
                     case "volume":
                         setVolume(intArg(q, "v", audio.getStreamVolume(AudioManager.STREAM_MUSIC)));
+                        break;
+                    case "playnext":
+                        enqueue(intArg(q, "id", -1), true);
+                        break;
+                    case "enqueue":
+                        enqueue(intArg(q, "id", -1), false);
+                        break;
+                    case "queue":
+                        return queueJson();
+                    case "qmove":
+                        queueMove(intArg(q, "from", -1), intArg(q, "to", -1));
+                        return queueJson();
+                    case "qremove":
+                        queueRemove(intArg(q, "i", -1));
+                        return queueJson();
+                    case "qclear":
+                        setUpcoming(new ArrayList<Track>());
+                        return queueJson();
+                    case "fade":
+                        setFade(intArg(q, "s", 0));
                         break;
                     case "rescan":
                         rescan();
