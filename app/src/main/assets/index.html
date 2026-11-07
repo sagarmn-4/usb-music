@@ -156,6 +156,8 @@ body.playing .bars span{animation-play-state:running}
 #asheet button:active{background:var(--card)}
 #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:140;background:#fff;color:#000;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:500;max-width:86vw;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 #ptitle{font-size:22px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#psub2{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
+#psub2:empty{display:none}
 #psub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
 .times{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:none;margin:0;--p:0%}
@@ -287,6 +289,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div>
     <div id="ptitle">Nothing playing</div>
     <div id="psub"></div>
+    <div id="psub2"></div>
     <input id="seek" type="range" min="0" max="0" value="0">
     <div class="times"><span id="t0">0:00</span><span id="t1">0:00</span></div>
     <div class="ctl">
@@ -360,7 +363,7 @@ function fmt(ms) {
 }
 function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 const primary = a => (a || '').split(/,\s|;/)[0].trim();
-const sub = t => [t[2], t[3]].filter(Boolean).join(' \u2022 ');
+const sub = t => [t[2] || t[5], t[3]].filter(Boolean).join(' \u2022 ');
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 
 /* ---------- cover art ---------- */
@@ -671,7 +674,7 @@ function render() {
 
   if (tab === 'songs') {
     const ids = [];
-    lib.tracks.forEach((t, id) => { if (has(t[0], t[1], t[2], t[3])) ids.push(id); });
+    lib.tracks.forEach((t, id) => { if (has(t[0], t[1], t[2], t[3], t[5])) ids.push(id); });
     shown = ids.length;
     if (!q && ids.length) {
       const r = document.createElement('div'); r.className = 'actionrow';
@@ -794,7 +797,7 @@ function renderSearch() {
   if (!q) { note('Search your whole drive: songs, albums, artists and folders.'); return; }
   const has = (...xs) => xs.some(x => (x || '').toLowerCase().includes(q));
   const songIds = [];
-  lib.tracks.forEach((t, id) => { if (has(t[0], t[2], t[3], t[1].split('/').pop())) songIds.push(id); });
+  lib.tracks.forEach((t, id) => { if (has(t[0], t[2], t[3], t[5], t[1].split('/').pop())) songIds.push(id); });
   const sections = [
     ['songs', 'Songs', songIds, id => songRow(id, 'album'), 6],
     ['albums', 'Albums', idx.albums.filter(a => has(a.name, a.artist)), albumRow, 4],
@@ -878,7 +881,11 @@ function applyState(s) {
   $('#mtitle').textContent = s.title || 'Loading…';
   $('#msub').textContent = subline;
   $('#ptitle').textContent = s.title || 'Nothing playing';
-  $('#psub').textContent = subline;
+  // The singers first; the musician on a smaller line of its own when it is someone else.
+  const main = s.artist || s.composer || [s.album].filter(Boolean).join('') || s.folder || '';
+  $('#psub').textContent = main;
+  $('#psub').style.marginBottom = s.composer && s.composer !== main ? '2px' : '';
+  $('#psub2').textContent = s.composer && s.composer !== main ? 'Music \u00b7 ' + s.composer : '';
 
   if (s.id !== shownId && lib.tracks.length) {
     shownId = s.id;
@@ -1078,7 +1085,7 @@ function syncSession(s) {
     ms.metadata = s.id >= 0 && s.title
       ? new MediaMetadata({
           title: s.title,
-          artist: s.artist || '',
+          artist: s.artist || s.composer || '',
           album: s.album || s.folder || '',
           artwork: [{src: new URL(artUrl(s.id), location.href).href, sizes: '512x512', type: 'image/jpeg'}],
         })

@@ -600,6 +600,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         o.put("title", current == null ? "" : current.title);
         o.put("folder", current == null ? "" : current.folder);
         o.put("artist", current == null ? "" : current.artist);
+        o.put("composer", current == null ? "" : current.composer);
         o.put("album", current == null ? "" : current.album);
         o.put("pos", pos);
         o.put("dur", dur);
@@ -620,7 +621,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private JSONObject libraryJson() throws JSONException {
         JSONArray tracks = new JSONArray();
         for (Track t : library) {
-            tracks.put(new JSONArray().put(t.title).put(t.folder).put(t.artist).put(t.album).put(t.durationMs));
+            tracks.put(new JSONArray().put(t.title).put(t.folder).put(t.artist).put(t.album).put(t.durationMs).put(t.composer));
         }
         return new JSONObject().put("ver", version).put("tracks", tracks);
     }

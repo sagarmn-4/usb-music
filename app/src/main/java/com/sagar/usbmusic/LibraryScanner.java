@@ -92,7 +92,7 @@ final class LibraryScanner {
             String[] tags = readTags(mmr, f.getAbsolutePath());
             out.add(new Track(tags[0].isEmpty() ? base : tags[0],
                     rel.isEmpty() ? "(top folder)" : rel,
-                    f.getAbsolutePath(), true, tags[1], tags[2], base, toInt(tags[3]), dir.getAbsolutePath()));
+                    f.getAbsolutePath(), true, tags[1], tags[2], base, toInt(tags[3]), dir.getAbsolutePath(), ""));
         }
     }
 
@@ -149,7 +149,8 @@ final class LibraryScanner {
                         MediaStore.Audio.Media.ARTIST,
                         MediaStore.Audio.Media.ALBUM,
                         MediaStore.Audio.Media.DURATION,
-                        MediaStore.Audio.Media.DATA};
+                        MediaStore.Audio.Media.DATA,
+                        MediaStore.Audio.Media.COMPOSER};
                 int before = out.size();
                 try (Cursor c = ctx.getContentResolver().query(base, proj, null, null, null)) {
                     if (c == null) continue;
@@ -166,9 +167,18 @@ final class LibraryScanner {
                         if (inSkippedDir(rel)) continue;
                         String data = c.getString(7);
                         Uri uri = ContentUris.withAppendedId(base, c.getLong(0));
+                        String artist = clean(c.getString(4));
+                        String composer = clean(c.getString(8));
+                        // Android's scanner does not read the tag block inside WAV files; do it here.
+                        if ((artist.isEmpty() || composer.isEmpty()) && data != null
+                                && data.toLowerCase(Locale.ROOT).endsWith(".wav")) {
+                            String[] w = WavTags.read(data);
+                            if (artist.isEmpty()) artist = w[0];
+                            if (composer.isEmpty()) composer = w[1];
+                        }
                         out.add(new Track(title, rel, uri.toString(), false,
-                                clean(c.getString(4)), clean(c.getString(5)), fileBase, c.getInt(6),
-                                data == null ? null : new File(data).getParent()));
+                                artist, clean(c.getString(5)), fileBase, c.getInt(6),
+                                data == null ? null : new File(data).getParent(), composer));
                     }
                 }
                 log.append("MediaStore ").append(vol).append(": ").append(out.size() - before)

@@ -17,9 +17,12 @@ final class Track {
     final int durationMs;
     /** Folder the song sits in on the drive, when known. */
     final String dir;
+    /** The composer or musician from the tags; empty when the file has none. */
+    final String composer;
 
     Track(String title, String folder, String source, boolean isFile,
-          String artist, String album, String sortName, int durationMs, String dir) {
+          String artist, String album, String sortName, int durationMs, String dir,
+          String composer) {
         this.title = title;
         this.folder = folder;
         this.source = source;
@@ -29,6 +32,7 @@ final class Track {
         this.sortName = sortName;
         this.durationMs = durationMs;
         this.dir = dir;
+        this.composer = composer == null ? "" : composer;
     }
 
     /** First credited artist, e.g. "A" for "A, B". Empty when the file has no artist tag. */
