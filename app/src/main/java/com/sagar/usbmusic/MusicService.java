@@ -90,6 +90,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private NotificationManager notifications;
     private WebServer server;
     private CoverFetcher covers;
+    private PowerManager.WakeLock screenLock;
     private volatile int artVersion;
     private long lastArtBump;
     private WifiManager.WifiLock wifiLock;
@@ -153,6 +154,10 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         instance = null;
         try {
             unregisterReceiver(storageReceiver);
+        } catch (Exception ignored) {
+        }
+        try {
+            if (screenLock != null && screenLock.isHeld()) screenLock.release();
         } catch (Exception ignored) {
         }
         if (server != null) server.stop();
@@ -579,6 +584,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     }
 
     JSONObject state() throws JSONException {
+        syncScreenLock();
         JSONObject o = new JSONObject();
         int pos = 0, dur = 0;
         try {
@@ -766,6 +772,30 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     }
 
     private void updateNotification() {
+        syncScreenLock();
         notifications.notify(NOTIF_ID, buildNotification());
+    }
+
+    /**
+     * The TV puts itself to sleep after 15 minutes without remote or button activity, and playing
+     * music through this app does not count as activity. While a song plays, hold a screen wake
+     * lock so the TV stays on; let go when it stops so the TV can sleep as usual.
+     */
+    @SuppressWarnings("deprecation")
+    private void syncScreenLock() {
+        boolean want = isPlaying();
+        try {
+            if (want && (screenLock == null || !screenLock.isHeld())) {
+                if (screenLock == null) {
+                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                    screenLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "usbmusic:playing");
+                    screenLock.setReferenceCounted(false);
+                }
+                screenLock.acquire(2 * 60 * 60 * 1000L);
+            } else if (!want && screenLock != null && screenLock.isHeld()) {
+                screenLock.release();
+            }
+        } catch (Exception ignored) {
+        }
     }
 }
