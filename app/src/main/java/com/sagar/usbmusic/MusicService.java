@@ -73,29 +73,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private int nextCount;
     /** True while the current song came from userQueue; qpos then still points at the song before it. */
     private boolean fromUser;
-    /** Fade between songs in seconds: 0 (off), 2, 5 or 10. */
-    private int fadeSec;
-    private boolean fadeInThis;
-    private final Runnable fadeTick = new Runnable() {
-        @Override public void run() {
-            if (fadeSec <= 0) return;
-            float vol = 1f;
-            try {
-                if (prepared && mp != null && mp.isPlaying()) {
-                    int dur = mp.getDuration();
-                    int pos = mp.getCurrentPosition();
-                    if (dur > 0) {
-                        long ms = Math.min(fadeSec * 1000L, dur / 3);
-                        if (fadeInThis && pos < ms) vol = Math.min(vol, pos / (float) ms);
-                        if (dur - pos < ms && hasNextTrack()) vol = Math.min(vol, (dur - pos) / (float) ms);
-                    }
-                    mp.setVolume(vol, vol);
-                }
-            } catch (Exception ignored) {
-            }
-            main.postDelayed(this, 100);
-        }
-    };
     private int qpos = -1;
     private Track current;
 
@@ -147,8 +124,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
 
         covers = new CoverFetcher(this, this);
-        fadeSec = getSharedPreferences("usbmusic", MODE_PRIVATE).getInt("fade", 0);
-        if (fadeSec > 0) main.post(fadeTick);
         server = new WebServer(this, this);
         if (!server.start()) lastError = "Could not open a network port";
 
@@ -180,7 +155,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             unregisterReceiver(storageReceiver);
         } catch (Exception ignored) {
         }
-        main.removeCallbacks(fadeTick);
         if (server != null) server.stop();
         releasePlayer();
         if (wifiLock != null && wifiLock.isHeld()) wifiLock.release();
@@ -318,7 +292,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
 
     private void startTrack(Track t) {
         fromUser = false;
-        fadeInThis = false;
         releasePlayer();
         current = t;
         prepared = false;
@@ -373,7 +346,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         prepared = true;
         errorStreak = 0;
         if (wantPlay) {
-            if (fadeSec > 0 && fadeInThis) m.setVolume(0f, 0f);
             m.start();
         }
         updateNotification();
@@ -402,7 +374,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             if (nextCount > 0) nextCount--;
             startTrack(n);
             fromUser = true;
-            fadeInThis = true;
             return;
         }
         if (queue.isEmpty()) return;
@@ -432,21 +403,15 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
         qpos = n;
         startTrack(queue.get(n));
-        fadeInThis = true;
     }
 
-    // ---- queue ("up next") and fade ------------------------------------------------------
+    // ---- queue ("up next") ---------------------------------------------------------------
 
     /** Songs that will play after the current one, in order. */
     private List<Track> upcoming() {
         List<Track> l = new ArrayList<>(userQueue);
         for (int i = qpos + 1; i < queue.size(); i++) l.add(queue.get(i));
         return l;
-    }
-
-    private boolean hasNextTrack() {
-        if (repeat == REPEAT_ONE) return false;
-        return !userQueue.isEmpty() || qpos + 1 < queue.size() || (repeat == REPEAT_ALL && queue.size() > 1);
     }
 
     private void enqueue(int id, boolean next) {
@@ -494,20 +459,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             items.put(new JSONArray().put(library.indexOf(t)).put(t.title).put(t.artist).put(t.durationMs));
         }
         return new JSONObject().put("total", l.size()).put("items", items);
-    }
-
-    private void setFade(int seconds) {
-        fadeSec = seconds == 2 || seconds == 5 || seconds == 10 ? seconds : 0;
-        getSharedPreferences("usbmusic", MODE_PRIVATE).edit().putInt("fade", fadeSec).apply();
-        main.removeCallbacks(fadeTick);
-        if (fadeSec > 0) {
-            main.post(fadeTick);
-        } else if (prepared && mp != null) {
-            try {
-                mp.setVolume(1f, 1f);
-            } catch (Exception ignored) {
-            }
-        }
     }
 
     private void togglePlay() {
@@ -651,7 +602,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         o.put("vol", audio.getStreamVolume(AudioManager.STREAM_MUSIC));
         o.put("maxVol", audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
         o.put("muted", audio.isStreamMute(AudioManager.STREAM_MUSIC));
-        o.put("fade", fadeSec);
         o.put("upnext", userQueue.size() + Math.max(0, queue.size() - qpos - 1));
         o.put("count", library.size());
         o.put("ver", version);
@@ -725,9 +675,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                     case "qclear":
                         setUpcoming(new ArrayList<Track>());
                         return queueJson();
-                    case "fade":
-                        setFade(intArg(q, "s", 0));
-                        break;
                     case "rescan":
                         rescan();
                         break;

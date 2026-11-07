@@ -149,17 +149,11 @@ body.playing .bars span{animation-play-state:running}
 .qrow .rm{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
 .qrow.now{border-bottom:0}
 .qrow.now .t{color:var(--accent)}
-#ascrim,#fscrim{position:fixed;inset:0;z-index:129;background:rgba(0,0,0,.55)}
+#ascrim{position:fixed;inset:0;z-index:129;background:rgba(0,0,0,.55)}
 #asheet{position:fixed;left:0;right:0;bottom:0;z-index:130;margin:0 auto;max-width:720px;background:#2b2b2b;border-radius:16px 16px 0 0;padding:6px 0 calc(10px + env(safe-area-inset-bottom))}
 #asheet .at{padding:14px 20px 8px;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #asheet button{display:flex;align-items:center;gap:16px;width:100%;padding:14px 20px;font-size:16px;text-align:left}
 #asheet button:active{background:var(--card)}
-#fadebox{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:130;width:min(86vw,360px);background:#2b2b2b;border-radius:16px;padding:20px}
-#fadebox h3{margin:0 0 4px;font-size:18px;font-weight:700}
-#fadebox p{margin:0 0 14px;color:var(--muted);font-size:14px}
-#fadebox .opts{display:flex;gap:8px}
-#fadebox .opts button{flex:1;height:44px;border-radius:10px;background:rgba(255,255,255,.1);font-weight:500}
-#fadebox .opts button.on{background:#fff;color:#000}
 #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:140;background:#fff;color:#000;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:500;max-width:86vw;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 #ptitle{font-size:22px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #psub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
@@ -222,7 +216,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <symbol id="i-volmute" viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></symbol>
   <symbol id="i-queue" viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></symbol>
   <symbol id="i-handle" viewBox="0 0 24 24"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></symbol>
-  <symbol id="i-fade" viewBox="0 0 24 24"><path d="M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z"/></symbol>
   <symbol id="i-minus" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></symbol>
   <symbol id="i-add" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
@@ -289,7 +282,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     </span>
   </div>
   <div id="pscrim" hidden></div>
-  <div id="pmenu" hidden><button id="pFolder"><svg class="ic"><use href="#i-folder"/></svg>Go to folder</button><button id="pFade"><svg class="ic"><use href="#i-fade"/></svg>Fade between songs: <span class="fadeLbl">Off</span></button></div>
+  <div id="pmenu" hidden><button id="pFolder"><svg class="ic"><use href="#i-folder"/></svg>Go to folder</button></div>
   <div id="pstage"></div>
   <div>
     <div id="ptitle">Nothing playing</div>
@@ -319,7 +312,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <div id="menu" hidden>
   <button id="mRescan"><svg class="ic"><use href="#i-refresh"/></svg>Rescan USB</button>
   <button id="mLog"><svg class="ic"><use href="#i-log"/></svg>Scan log</button>
-  <button id="mFade"><svg class="ic"><use href="#i-fade"/></svg>Fade between songs: <span class="fadeLbl">Off</span></button>
 </div>
 
 <section id="queuesheet" class="sheet" aria-label="Up next">
@@ -339,15 +331,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="at" id="atitle"></div>
   <button id="aNext"><svg class="ic"><use href="#i-next"/></svg>Play next</button>
   <button id="aAdd"><svg class="ic"><use href="#i-add"/></svg>Add to queue</button>
-</div>
-
-<div id="fscrim" hidden></div>
-<div id="fadebox" hidden>
-  <h3>Fade between songs</h3>
-  <p>The end of a song fades out and the next one fades in.</p>
-  <div class="opts">
-    <button data-s="0">Off</button><button data-s="2">2 s</button><button data-s="5">5 s</button><button data-s="10">10 s</button>
-  </div>
 </div>
 
 <div id="toast" hidden></div>
@@ -929,12 +912,11 @@ function applyState(s) {
   $('#vnum').classList.toggle('dim', muted);
   if (prevId !== s.id || lastMark !== s.id + '|' + s.playing) markCurrent();
   syncSession(s);
-  document.querySelectorAll('.fadeLbl').forEach(e => { e.textContent = s.fade ? s.fade + ' s' : 'Off'; });
   const qk = s.id + '|' + s.upnext;
   if (qk !== lastQKey) { lastQKey = qk; if ($('#queuesheet').classList.contains('open') && !qDragging) loadQueue(); }
 }
 
-/* ---------- song menu, up next, fade ---------- */
+/* ---------- song menu and up next ---------- */
 let toastTimer = null;
 function toast(msg) {
   const t = $('#toast');
@@ -953,16 +935,6 @@ const closeActions = () => { $('#asheet').hidden = true; $('#ascrim').hidden = t
 $('#ascrim').onclick = closeActions;
 $('#aNext').onclick = () => { const id = actionId, idle = st.id < 0; closeActions(); cmd('playnext?id=' + id).then(() => toast(idle ? 'Playing' : 'Playing next')); };
 $('#aAdd').onclick = () => { const id = actionId, idle = st.id < 0; closeActions(); cmd('enqueue?id=' + id).then(() => toast(idle ? 'Playing' : 'Added to queue')); };
-
-function openFade() {
-  document.querySelectorAll('#fadebox .opts button').forEach(b => b.classList.toggle('on', +b.dataset.s === (st.fade || 0)));
-  $('#fadebox').hidden = false; $('#fscrim').hidden = false;
-}
-const closeFade = () => { $('#fadebox').hidden = true; $('#fscrim').hidden = true; };
-$('#fscrim').onclick = closeFade;
-document.querySelectorAll('#fadebox .opts button').forEach(b => {
-  b.onclick = () => { const v = +b.dataset.s; closeFade(); cmd('fade?s=' + v).then(() => toast(v ? 'Fade ' + v + ' s' : 'Fade off')); };
-});
 
 let lastQKey = '', qDragging = false;
 async function loadQueue() {
@@ -1054,8 +1026,6 @@ function openQueue() {
 $('#pqueue').onclick = openQueue;
 $('#qBack').onclick = () => history.back();
 $('#qClear').onclick = () => api('qclear').then(renderQueue);
-$('#mFade').onclick = () => { closeMenu(); openFade(); };
-$('#pFade').onclick = () => { closePMenu(); openFade(); };
 
 /* ---------- phone lock-screen / notification controls ----------
    The music plays on the TV, so the phone browser has no audio of its own. A silent looping
