@@ -15,9 +15,11 @@ final class Track {
     /** File-name based key, so tracks keep their on-disk order whatever the tags say. */
     final String sortName;
     final int durationMs;
+    /** Folder the song sits in on the drive, when known. */
+    final String dir;
 
     Track(String title, String folder, String source, boolean isFile,
-          String artist, String album, String sortName, int durationMs) {
+          String artist, String album, String sortName, int durationMs, String dir) {
         this.title = title;
         this.folder = folder;
         this.source = source;
@@ -26,6 +28,7 @@ final class Track {
         this.album = album == null ? "" : album;
         this.sortName = sortName;
         this.durationMs = durationMs;
+        this.dir = dir;
     }
 
     /** First credited artist, e.g. "A" for "A, B". Empty when the file has no artist tag. */

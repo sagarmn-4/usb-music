@@ -82,6 +82,9 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private AudioFocusRequest focusReq;
     private NotificationManager notifications;
     private WebServer server;
+    private CoverFetcher covers;
+    private volatile int artVersion;
+    private long lastArtBump;
     private WifiManager.WifiLock wifiLock;
 
     private final BroadcastReceiver storageReceiver = new BroadcastReceiver() {
@@ -113,6 +116,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         } catch (Exception ignored) {
         }
 
+        covers = new CoverFetcher(this, this);
         server = new WebServer(this, this);
         if (!server.start()) lastError = "Could not open a network port";
 
@@ -185,6 +189,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
 
     private void applyLibrary(List<Track> found, String logText) {
         library = found;
+        if (covers.isAuto()) covers.start(new ArrayList<>(found), -1);
         scanLog = logText;
         version++;
         scanning = false;
@@ -520,6 +525,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         o.put("muted", audio.isStreamMute(AudioManager.STREAM_MUSIC));
         o.put("count", library.size());
         o.put("ver", version);
+        o.put("art", artVersion);
         o.put("scanning", scanning);
         o.put("error", lastError);
         return o;
@@ -542,6 +548,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                         break;
                     case "library":
                         return libraryJson();
+                    case "covers":
+                        return covers.command(q.get("cmd"), q, new ArrayList<>(library));
                     case "debug":
                         return new JSONObject().put("log", scanLog)
                                 .put("ip", WebServer.localIp()).put("port", port());
@@ -589,6 +597,35 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
     }
 
+    // ---- cover art ------------------------------------------------------------------------
+
+    /** The phone asked for a cover that does not exist yet: look this folder up first. */
+    void prioritizeCover(Track t) {
+        if (covers != null) covers.prioritize(t);
+    }
+
+    /** A cover file was written. Tells the phone page to look again, at most every few seconds. */
+    void onCoverAdded() {
+        main.post(new Runnable() {
+            @Override public void run() {
+                long now = System.currentTimeMillis();
+                if (now - lastArtBump > 4000) {
+                    lastArtBump = now;
+                    artVersion++;
+                }
+            }
+        });
+    }
+
+    void onCoversFinished() {
+        main.post(new Runnable() {
+            @Override public void run() {
+                artVersion++;
+                updateNotification();
+            }
+        });
+    }
+
     // ---- info for the on-TV screen --------------------------------------------------------
 
     int port() {
@@ -598,6 +635,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     String summary() {
         StringBuilder sb = new StringBuilder();
         sb.append(scanning ? "Scanning USB…\n" : library.size() + " songs found\n");
+        String cl = covers == null ? "" : covers.line();
+        if (!cl.isEmpty()) sb.append(cl).append('\n');
         if (current != null) {
             sb.append(isPlaying() ? "Playing: " : "Paused: ").append(current.title).append('\n');
         }

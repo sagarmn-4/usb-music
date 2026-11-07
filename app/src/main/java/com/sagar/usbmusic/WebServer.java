@@ -157,6 +157,7 @@ final class WebServer {
                         artSlots.release();
                     }
                 }
+                if (art == null && t != null) svc.prioritizeCover(t);
                 if (art == null) {
                     status = 404;
                     type = "text/plain; charset=utf-8";

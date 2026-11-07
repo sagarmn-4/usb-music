@@ -312,6 +312,15 @@ const sub = t => [t[2], t[3]].filter(Boolean).join(' \u2022 ');
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 
 /* ---------- cover art ---------- */
+function attachArt(d, id, key) {
+  const img = new Image();
+  img.alt = ''; img.decoding = 'async'; img.loading = 'lazy';
+  img.onload = () => d.classList.add('has');
+  img.onerror = () => { noArt.add(key); img.remove(); };
+  img.src = artUrl(id);
+  d.prepend(img);
+}
+
 function makeArt(id, extra) {
   const d = document.createElement('div');
   d.className = 'art' + (extra ? ' ' + extra : '');
@@ -320,16 +329,22 @@ function makeArt(id, extra) {
   if (!t) return d;
   const key = t[3] ? t[1] + '|' + t[3] : '#' + id;
   d.style.setProperty('--h', hash(key) % 360);
-  if (!noArt.has(key)) {
-    const img = new Image();
-    img.alt = ''; img.decoding = 'async'; img.loading = 'lazy';
-    img.onload = () => d.classList.add('has');
-    img.onerror = () => { noArt.add(key); img.remove(); };
-    img.src = '/art?id=' + id + '&v=' + lib.ver;
-    d.append(img);
-  }
+  d.dataset.id = id;
+  d.dataset.key = key;
+  if (!noArt.has(key)) attachArt(d, id, key);
   return d;
 }
+
+// The TV saved new cover files: look again at every tile that has no picture yet.
+function refreshArt() {
+  noArt.clear();
+  document.querySelectorAll('.art[data-id]:not(.has)').forEach(d => {
+    const old = d.querySelector('img');
+    if (old) old.remove();
+    attachArt(d, +d.dataset.id, d.dataset.key);
+  });
+}
+
 function hueOf(id) {
   const t = lib.tracks[id];
   if (!t) return 0;
@@ -365,13 +380,14 @@ function playerArt(id) {
     img.alt = ''; img.decoding = 'async';
     img.onload = () => w.classList.add('has');
     img.onerror = () => { noArt.add(key); img.remove(); };
-    img.src = '/art?id=' + id + '&v=' + lib.ver;
+    img.src = artUrl(id);
     w.append(img);
   }
   return w;
 }
 
-function artUrl(id) { return '/art?id=' + id + '&v=' + lib.ver; }
+let artVer = 0;
+function artUrl(id) { return '/art?id=' + id + '&v=' + lib.ver + '.' + artVer; }
 
 /* ---------- library ---------- */
 async function loadLib() {
@@ -764,6 +780,7 @@ function applyState(s) {
   const prevId = st.id;
   st = s;
   if (s.ver !== lib.ver) loadLib();
+  if (s.art !== undefined && s.art !== artVer) { artVer = s.art; refreshArt(); shownId = -2; }
   $('#count').textContent = s.scanning ? 'Scanning…' : plural(s.count, 'song');
   $('#err').textContent = s.error || '';
 

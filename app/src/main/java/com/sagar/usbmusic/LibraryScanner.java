@@ -30,30 +30,10 @@ final class LibraryScanner {
 
     static List<Track> scan(Context ctx, StringBuilder log) {
         List<Track> out = new ArrayList<>();
-        File[] volumes = new File("/storage").listFiles();
-        if (volumes == null) {
-            log.append("/storage cannot be listed\n");
-        } else {
-            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-            try {
-                for (File v : volumes) {
-                    String n = v.getName();
-                    if (n.equals("emulated") || n.equals("self") || !v.isDirectory()) continue;
-                    int before = out.size();
-                    walk(mmr, v, v, 0, out);
-                    log.append("volume ").append(n).append(": ").append(out.size() - before)
-                            .append(" tracks, readable=").append(v.canRead()).append('\n');
-                }
-            } finally {
-                try {
-                    mmr.release();
-                } catch (Exception ignored) {
-                }
-            }
-        }
+        queryMediaStore(ctx, out, log);
         if (out.isEmpty()) {
-            log.append("file scan found nothing, trying MediaStore\n");
-            queryMediaStore(ctx, out, log);
+            log.append("MediaStore found nothing, trying a file scan\n");
+            scanFiles(out, log);
         }
         Collections.sort(out, new Comparator<Track>() {
             @Override public int compare(Track a, Track b) {
@@ -63,6 +43,30 @@ final class LibraryScanner {
         });
         log.append("total ").append(out.size()).append(" tracks\n");
         return out;
+    }
+
+    private static void scanFiles(List<Track> out, StringBuilder log) {
+        File[] volumes = new File("/storage").listFiles();
+        if (volumes == null) {
+            log.append("/storage cannot be listed\n");
+            return;
+        }
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        try {
+            for (File v : volumes) {
+                String n = v.getName();
+                if (n.equals("emulated") || n.equals("self") || !v.isDirectory()) continue;
+                int before = out.size();
+                walk(mmr, v, v, 0, out);
+                log.append("volume ").append(n).append(": ").append(out.size() - before)
+                        .append(" tracks, readable=").append(v.canRead()).append('\n');
+            }
+        } finally {
+            try {
+                mmr.release();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private static void walk(MediaMetadataRetriever mmr, File root, File dir, int depth,
@@ -88,7 +92,7 @@ final class LibraryScanner {
             String[] tags = readTags(mmr, f.getAbsolutePath());
             out.add(new Track(tags[0].isEmpty() ? base : tags[0],
                     rel.isEmpty() ? "(top folder)" : rel,
-                    f.getAbsolutePath(), true, tags[1], tags[2], base, toInt(tags[3])));
+                    f.getAbsolutePath(), true, tags[1], tags[2], base, toInt(tags[3]), dir.getAbsolutePath()));
         }
     }
 
@@ -144,7 +148,8 @@ final class LibraryScanner {
                         MediaStore.Audio.Media.RELATIVE_PATH,
                         MediaStore.Audio.Media.ARTIST,
                         MediaStore.Audio.Media.ALBUM,
-                        MediaStore.Audio.Media.DURATION};
+                        MediaStore.Audio.Media.DURATION,
+                        MediaStore.Audio.Media.DATA};
                 int before = out.size();
                 try (Cursor c = ctx.getContentResolver().query(base, proj, null, null, null)) {
                     if (c == null) continue;
@@ -159,9 +164,11 @@ final class LibraryScanner {
                         if (rel == null || rel.isEmpty() || rel.equals("/")) rel = "(top folder)";
                         while (rel.endsWith("/")) rel = rel.substring(0, rel.length() - 1);
                         if (inSkippedDir(rel)) continue;
+                        String data = c.getString(7);
                         Uri uri = ContentUris.withAppendedId(base, c.getLong(0));
                         out.add(new Track(title, rel, uri.toString(), false,
-                                clean(c.getString(4)), clean(c.getString(5)), fileBase, c.getInt(6)));
+                                clean(c.getString(4)), clean(c.getString(5)), fileBase, c.getInt(6),
+                                data == null ? null : new File(data).getParent()));
                     }
                 }
                 log.append("MediaStore ").append(vol).append(": ").append(out.size() - before)
