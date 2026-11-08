@@ -582,6 +582,87 @@ def run_coverscheck(a):
     print('report: ' + os.path.join(a.work, 'covers-check.csv'), flush=True)
 
 
+# ---------------------------------------------------------------- matching helpers
+
+GENERIC = re.compile(r'(?i)^(cd|disc|disk|part)?\s*[a-z0-9]{1,2}$|^(cd|disc|disk)\s*\d+$')
+
+
+def search_name(dirpath):
+    """The folder name to search for. A generic name (A, CD1, Disc 2) borrows the parent folder's name."""
+    d = dirpath
+    for _ in range(3):
+        name = os.path.basename(d)
+        if name.lower() == 'music':
+            break
+        q = clean_folder_name(name)
+        if len(q) >= 3 and not GENERIC.match(name.strip()):
+            return q
+        d = os.path.dirname(d)
+    return clean_folder_name(os.path.basename(dirpath))
+
+
+def title_variants(s):
+    s = norm_title(s)
+    raw = s
+    out = {raw}
+    # "01 - Singer, Singer - Title" file names: also try just the part after the last dash
+    return out
+
+
+def title_sim(a, b):
+    def variants(x):
+        base = os.path.splitext(x)[0] if re.search(r'\.\w{2,4}$', x) else x
+        base = re.sub(r'^\s*\d+\s*[-.)]\s*', '', base)
+        out = {norm_title(base)}
+        if ' - ' in base:
+            out.add(norm_title(base.rsplit(' - ', 1)[1]))
+        return {v for v in out if v}
+    best = 0.0
+    for x in variants(a):
+        for y in variants(b):
+            best = max(best, ratio(x, y))
+    return best
+
+
+def match_songs(songs, tracks, relaxed=False):
+    """Assign songs to album tracks. Returns {file name: (track index, similarity, duration difference)}."""
+    sim_min, dur_max = (0.7, 3.0) if relaxed else (STRONG_TITLE, MAX_DUR_DIFF)
+    scored = []
+    for fn, full, tg in songs:
+        if not tg or tg.get('error'):
+            continue
+        title = tg['title'] or fn
+        for i, t in enumerate(tracks):
+            sim = max(title_sim(title, t['name']), title_sim(fn, t['name']))
+            dd = abs(t['ms'] / 1000.0 - tg['length'])
+            if sim >= sim_min and dd <= dur_max:
+                scored.append((sim - dd / 60.0, fn, i, sim, dd))
+    assign, used = {}, set()
+    for sc, fn, i, sim, dd in sorted(scored, reverse=True):
+        if fn in assign or i in used:
+            continue
+        assign[fn] = (i, sim, dd)
+        used.add(i)
+    if not relaxed:
+        # a second chance for songs whose names differ but whose length fits a track that is still free
+        for fn, full, tg in songs:
+            if fn in assign or not tg or tg.get('error'):
+                continue
+            title = tg['title'] or fn
+            best = None
+            for i, t in enumerate(tracks):
+                if i in used:
+                    continue
+                dd = abs(t['ms'] / 1000.0 - tg['length'])
+                sim = max(title_sim(title, t['name']), title_sim(fn, t['name']))
+                if dd <= 2.0 and sim >= 0.5 and (best is None or sim - dd / 60.0 > best[0]):
+                    best = (sim - dd / 60.0, i, sim, dd)
+            if best:
+                assign[fn] = (best[1], best[2], best[3])
+                used.add(best[1])
+    return assign
+
+
 # ---------------------------------------------------------------- the dry run
 
 def main():
@@ -647,10 +728,7 @@ def main():
         artist_hint = artists.most_common(1)[0][0] if artists else ''
 
         # 2. find the album online
-        name_for_search = folder
-        if re.match(r'(?i)^(cd|disc|disk)\s*\d+$', folder.strip()):
-            name_for_search = os.path.basename(os.path.dirname(dirpath))
-        query = clean_folder_name(name_for_search)
+        query = search_name(dirpath)
         album_artist, tracks, album_name, album_sim, why = '', [], '', 0.0, ''
         album_art = ''
         if rel == '.' or folder.lower() == root_name:
@@ -662,39 +740,34 @@ def main():
             results = online.search_albums(term)
             if not results and artist_hint:
                 results = online.search_albums(query)
+            if not results and len(query.split()) > 3:
+                results = online.search_albums(' '.join(query.split()[:3]))
             pick = pick_album(results, query, artist_hint) if results else None
             if pick is None:
                 why = 'no album found online'
-            elif pick[0] < STRONG_ALBUM:
-                why = 'album match too weak (%.2f: %s)' % (pick[0], pick[1]['name'])
-            else:
+            elif pick[0] >= STRONG_ALBUM:
                 album_sim, r = pick
-                album_name = r['name']
-                album_art = r.get('art', '')
+                album_name, album_art = r['name'], r.get('art', '')
                 album_artist, tracks = online.album_tracks(r['id'])
                 if album_artist is None:
                     why = 'could not read the album track list'
+            elif pick[0] >= 0.6:
+                # a near match on the name is accepted when the songs themselves line up with the album's tracks
+                aa, tr = online.album_tracks(pick[1]['id'])
+                good = match_songs(songs, tr, relaxed=True) if aa is not None else {}
+                if aa is not None and len(good) >= 3 and len(good) >= 0.6 * len(songs):
+                    album_sim, r = pick
+                    album_name, album_art, album_artist, tracks = r['name'], r.get('art', ''), aa, tr
+                    why = ''
+                else:
+                    why = 'album match too weak (%.2f: %s)' % (pick[0], pick[1]['name'])
+            else:
+                why = 'album match too weak (%.2f: %s)' % (pick[0], pick[1]['name'])
         folder_info.append({'dir': dirpath, 'album': album_name, 'album_sim': round(album_sim, 2), 'art': album_art, 'why': why})
         print('[%d/%d] %s -> %s' % (n, len(paths), rel, (album_name + ' (%.2f)' % album_sim) if album_name else why), flush=True)
 
-        # 3. match each song to a track, strong matches only
-        used = set()
-        scored = []
-        for fn, full, tg in songs:
-            if not tg or tg.get('error'):
-                continue
-            title = tg['title'] or fn
-            for i, t in enumerate(tracks):
-                sim = ratio(norm_title(title), norm_title(t['name']))
-                dd = abs(t['ms'] / 1000.0 - tg['length'])
-                if sim >= STRONG_TITLE and dd <= MAX_DUR_DIFF:
-                    scored.append((sim - dd / 60.0, fn, i, sim, dd))
-        assign = {}
-        for sc, fn, i, sim, dd in sorted(scored, reverse=True):
-            if fn in assign or i in used:
-                continue
-            assign[fn] = (i, sim, dd)
-            used.add(i)
+        # 3. match each song to a track
+        assign = match_songs(songs, tracks)
 
         for fn, full, tg in songs:
             ext = os.path.splitext(fn)[1].lower().lstrip('.')
