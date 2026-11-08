@@ -5,7 +5,9 @@ param(
     [string]$Tv = '192.168.1.6',
     [switch]$Reset
 )
-$adb = Join-Path $PSScriptRoot '..\tools\platform-tools\adb.exe'
+# adb: $env:USBMUSIC_ADB if set, else the platform-tools next to the AdDuck repo, else whatever is on PATH
+$adb = $env:USBMUSIC_ADB
+if (-not $adb -or -not (Test-Path $adb)) { $adb = 'D:\Work\AI\AdDuck\tools\platform-tools\adb.exe' }
 if (-not (Test-Path $adb)) { $adb = 'adb' }
 $pkg = 'com.sagar.usbmusic'
 & $adb connect "${Tv}:5555" | Out-Null
