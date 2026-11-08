@@ -14,7 +14,7 @@ Plays the music on a USB drive plugged into the TV, through the TV speakers. A p
 
 ## Build
 
-Push to GitHub: the `Build USB Music APK` workflow builds it. Download the `usb-music-apk` artifact from the run (Actions tab). Or locally with an Android SDK: `cd usb-music && gradle assembleDebug`.
+Push to GitHub: the `Build USB Music APK` workflow builds it. Download the `usb-music-apk` artifact from the run (Actions tab). Or locally with an Android SDK: `gradle assembleDebug`.
 
 ## Install on the TV
 
