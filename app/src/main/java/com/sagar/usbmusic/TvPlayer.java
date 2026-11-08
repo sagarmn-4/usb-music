@@ -245,7 +245,8 @@ final class TvPlayer {
 
         LinearLayout page = new LinearLayout(act);
         page.setOrientation(LinearLayout.HORIZONTAL);
-        page.setPadding(px(110), px(60), px(90), 0);
+        // The page spans the whole screen (so ambient mode can fill it); the rail and bar sit on top.
+        page.setPadding(px(470), px(60), px(90), px(130));
         page.setClipChildren(false);
         np.addView(page, new FrameLayout.LayoutParams(-1, -1));
 
@@ -256,7 +257,9 @@ final class TvPlayer {
         artHolder = new FrameLayout(act);
         artHolder.setClipChildren(false);
         nleft.addView(artHolder, new LinearLayout.LayoutParams(px(560), px(560)));
-        npTitle = TvUi.text(act, "", 52, TvUi.TEXT, true);
+        npTitle = TvUi.text(act, "", 46, TvUi.TEXT, true);
+        npTitle.setSingleLine(false);
+        npTitle.setMaxLines(2);
         npTitle.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams ntp = new LinearLayout.LayoutParams(-1, -2);
         ntp.topMargin = px(34);
@@ -282,6 +285,8 @@ final class TvPlayer {
         LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(-1, Math.max(1, px(1)));
         qpanel.addView(rule, rl);
         fromView = TvUi.text(act, "", 23, TvUi.MUTED, false);
+        fromView.setSingleLine(false);
+        fromView.setMaxLines(2);
         LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, -2);
         fp.topMargin = px(22);
         fp.leftMargin = px(8);
@@ -344,6 +349,34 @@ final class TvPlayer {
 
     boolean isAmbient() {
         return ambient;
+    }
+
+    boolean hasTrack() {
+        return hasTrack;
+    }
+
+    boolean isSeek(View v) {
+        return v == seek;
+    }
+
+    void focusPlay() {
+        btnPlay.requestFocus();
+    }
+
+    boolean inLastQueueRow(View f) {
+        int p = queueList.getPositionForView(f);
+        return p >= 0 && p == queueAdapterCount() - 1;
+    }
+
+    private int queueAdapterCount() {
+        return queueItems.size();
+    }
+
+    /** Puts the focus on the first row of Up next; false when the queue is empty. */
+    boolean focusQueue() {
+        View first = queueList.getChildAt(0);
+        if (first == null) return false;
+        return first.requestFocus();
     }
 
     // ---- buttons --------------------------------------------------------------------------
@@ -652,7 +685,7 @@ final class TvPlayer {
         float a = on ? 0f : 1f;
         qpanel.animate().alpha(a).setDuration(1400).start();
         bar.animate().alpha(a).setDuration(1400).start();
-        nleft.animate().translationX(on ? px(280) : 0f).scaleX(on ? 1.08f : 1f).scaleY(on ? 1.08f : 1f)
+        nleft.animate().translationX(on ? px(190) : 0f).scaleX(on ? 1.08f : 1f).scaleY(on ? 1.08f : 1f)
                 .setDuration(on ? 3000 : 400).start();
     }
 

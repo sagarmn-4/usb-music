@@ -59,7 +59,10 @@ public class MainActivity extends Activity {
 
     /** Any key wakes the screen from ambient mode (that key is then not used for anything else). */
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_DOWN && browse.onActivity()) return true;
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (browse.onActivity()) return true;
+            if (browse.onNavKey(event.getKeyCode())) return true;
+        }
         return super.dispatchKeyEvent(event);
     }
 
@@ -77,9 +80,13 @@ public class MainActivity extends Activity {
                     browse.seekBy(-10000);
                     return true;
                 case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                case KeyEvent.KEYCODE_MEDIA_PLAY:
-                case KeyEvent.KEYCODE_MEDIA_PAUSE:
                     browse.command("toggle");
+                    return true;
+                case KeyEvent.KEYCODE_MEDIA_PLAY:
+                    if (!browse.isPlaying()) browse.command("toggle");
+                    return true;
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                    if (browse.isPlaying()) browse.command("toggle");
                     return true;
                 case KeyEvent.KEYCODE_MEDIA_NEXT:
                     browse.command("next");

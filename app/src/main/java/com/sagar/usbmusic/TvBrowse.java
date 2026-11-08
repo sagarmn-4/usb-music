@@ -279,10 +279,10 @@ final class TvBrowse {
                 TvBrowse.this.showMenu(title, sub, art, labels, actions);
             }
         });
-        FrameLayout.LayoutParams npLp = new FrameLayout.LayoutParams(-1, -1);
-        npLp.leftMargin = px(361);
-        npLp.bottomMargin = px(130);
-        root.addView(player.np(), npLp);
+        // Order from the bottom: lists, now-playing page, rail, player bar.
+        root.addView(player.np(), new FrameLayout.LayoutParams(-1, -1));
+        divider.bringToFront();
+        rail.bringToFront();
         root.addView(player.bar(), new FrameLayout.LayoutParams(-1, px(130), Gravity.BOTTOM));
 
         toastView = TvUi.text(activity, "", 28, Color.BLACK, true);
@@ -302,6 +302,15 @@ final class TvBrowse {
     }
 
     void start() {
+        if (!focusWatch) {
+            focusWatch = true;
+            root.getViewTreeObserver().addOnGlobalFocusChangeListener(
+                    new android.view.ViewTreeObserver.OnGlobalFocusChangeListener() {
+                        @Override public void onGlobalFocusChanged(View oldFocus, View newFocus) {
+                            if (newFocus != null && isInside(newFocus, content)) lastContentFocus = newFocus;
+                        }
+                    });
+        }
         handler.post(refresh);
         // Before the list exists the system would pick any rail item; start on the current tab.
         handler.postDelayed(new Runnable() {
@@ -433,6 +442,56 @@ final class TvBrowse {
 
     void seekBy(int deltaMs) {
         player.seekBy(deltaMs);
+    }
+
+    boolean isPlaying() {
+        return playing;
+    }
+
+    private View lastContentFocus;
+    private boolean focusWatch;
+
+    private static boolean isInside(View v, View ancestor) {
+        for (android.view.ViewParent p = v.getParent(); p != null; p = p.getParent()) {
+            if (p == ancestor) return true;
+        }
+        return v == ancestor;
+    }
+
+    /**
+     * Down from the last row of a list, and Up from the progress line, would otherwise get stuck
+     * (a ListView keeps the key). Returns true when it moved the focus itself.
+     */
+    boolean onNavKey(int keyCode) {
+        if (keyCode != android.view.KeyEvent.KEYCODE_DPAD_DOWN && keyCode != android.view.KeyEvent.KEYCODE_DPAD_UP) {
+            return false;
+        }
+        View f = root.findFocus();
+        if (f == null || !player.hasTrack()) return false;
+        boolean inBar = isInside(f, player.bar());
+        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+            if (inBar) return false;
+            if (player.isOpen()) {
+                if (player.inLastQueueRow(f)) {
+                    player.focusPlay();
+                    return true;
+                }
+                return false;
+            }
+            // Only the very last row needs help; the list moves the focus itself everywhere else.
+            if (list != null && isInside(f, list) && list.getPositionForView(f) == list.getCount() - 1) {
+                player.focusPlay();
+                return true;
+            }
+            return false;
+        }
+        if (inBar && player.isSeek(f)) {
+            if (player.isOpen()) return player.focusQueue();
+            if (lastContentFocus != null && lastContentFocus.isShown() && lastContentFocus.isFocusable()) {
+                return lastContentFocus.requestFocus();
+            }
+        }
+        return false;
     }
 
     // ---- popup menu -----------------------------------------------------------------------
