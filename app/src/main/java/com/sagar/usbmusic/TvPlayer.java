@@ -73,7 +73,7 @@ final class TvPlayer {
     private SeekView seek;
     private LinearLayout info;
     private TvUi.ArtView barArt;
-    private TextView barTitle, barSub, timeView, volView;
+    private TextView barTitle, barSub, timeView;
     private ImageView btnShuffle, btnPlay, btnRepeat;
 
     // now playing
@@ -94,11 +94,10 @@ final class TvPlayer {
     private int id = -1;
     private boolean playing, hasTrack, open, ambient;
     private boolean shuffleOn, repeatOn;
-    private int pos, dur, vol, maxVol = 100, volTarget = -1;
+    private int pos, dur;
     private int lastUpnext = -1, lastQueueId = -2;
     private String repeatMode = "off";
     private final List<QItem> queueItems = new ArrayList<>();
-    private Runnable volSend;
 
     TvPlayer(Activity activity, Host h) {
         act = activity;
@@ -196,19 +195,7 @@ final class TvPlayer {
         right.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
         right.setClipChildren(false);
         timeView = TvUi.text(act, "0:00 / 0:00", 26, 0xFFCFCFD4, false);
-        right.addView(timeView, new LinearLayout.LayoutParams(-2, -2));
-        ImageView vdn = iconBtn(R.drawable.ic_minus, 68, 16, false, new Runnable() {
-            @Override public void run() {
-                stepVolume(-1);
-            }
-        });
-        volView = TvUi.text(act, "0", 26, 0xFFCFCFD4, false);
-        volView.setGravity(Gravity.CENTER);
-        ImageView vup = iconBtn(R.drawable.ic_plus, 68, 16, false, new Runnable() {
-            @Override public void run() {
-                stepVolume(1);
-            }
-        });
+        // Volume is left to the remote's own volume keys (they reach the TV and the receiver).
         ImageView queue = iconBtn(R.drawable.ic_queue, 68, 16, false, new Runnable() {
             @Override public void run() {
                 openNp(true);
@@ -216,11 +203,7 @@ final class TvPlayer {
         });
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-2, -2);
         tl.rightMargin = px(16);
-        right.removeAllViews();
         right.addView(timeView, tl);
-        addBtn(right, vdn, 68, 4);
-        right.addView(volView, new LinearLayout.LayoutParams(px(60), -2));
-        addBtn(right, vup, 68, 4);
         addBtn(right, queue, 68, 4);
         row.addView(right, new LinearLayout.LayoutParams(px(560), -2));
 
@@ -424,21 +407,6 @@ final class TvPlayer {
         styleBtn(b, big);
     }
 
-    private void stepVolume(int d) {
-        int base = volTarget < 0 ? vol : volTarget;
-        volTarget = Math.max(0, Math.min(maxVol, base + d));
-        volView.setText(String.valueOf(volTarget));
-        if (volSend != null) bar.removeCallbacks(volSend);
-        volSend = new Runnable() {
-            @Override public void run() {
-                int v = volTarget;
-                host.command("volume", "v", String.valueOf(v));
-                volTarget = -1;
-            }
-        };
-        bar.postDelayed(volSend, 150);
-    }
-
     /** Left/Right on the seek line jump 10 seconds; the media keys use the same. */
     void seekBy(int deltaMs) {
         if (!hasTrack || dur <= 0) return;
@@ -464,8 +432,6 @@ final class TvPlayer {
         playing = st.optBoolean("playing");
         pos = st.optInt("pos", 0);
         dur = st.optInt("dur", 0);
-        vol = st.optInt("vol", 0);
-        maxVol = Math.max(1, st.optInt("maxVol", 100));
         shuffleOn = st.optBoolean("shuffle");
         repeatMode = st.optString("repeat", "off");
         repeatOn = !"off".equals(repeatMode);
@@ -483,7 +449,6 @@ final class TvPlayer {
         setOn(btnRepeat, repeatOn, false);
         seek.setFraction(dur > 0 ? pos / (float) dur : 0f);
         timeView.setText(TvUi.fmt(pos) + " / " + TvUi.fmt(dur));
-        if (volTarget < 0) volView.setText(String.valueOf(vol));
         curDur.setText(TvUi.fmt(dur));
         if (labelEq != null) labelEq.setRunning(playing);
         syncSpin();

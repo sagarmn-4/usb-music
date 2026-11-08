@@ -2,6 +2,14 @@ package com.sagar.usbmusic;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Context;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
+import android.util.TypedValue;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -11,6 +19,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -48,6 +57,19 @@ final class TvBrowse {
             R.drawable.ic_folder, R.drawable.ic_album, R.drawable.ic_note, R.drawable.ic_person};
     private static final int REST = 0xFFE6E6EA;
     private static final long AMBIENT_MS = 30000;
+    private static final int SEARCH_TAB = 4;
+
+    private LinearLayout searchItem;
+    private ImageView searchIcon;
+    private TextView searchLabel;
+    private EditText searchField;
+    private String searchQuery = "";
+    private int searchFocus = 0;
+    private final Runnable doSearch = new Runnable() {
+        @Override public void run() {
+            runSearch();
+        }
+    };
 
     private final Activity act;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -110,6 +132,10 @@ final class TvBrowse {
     private static final class RowItem {
         int id = -1;
         LibraryIndex.Node folder;
+        LibraryIndex.Group group;
+        boolean groupIsAlbum;
+        /** A section title in the search results ("Songs", "Folders"...); not selectable. */
+        String header;
         String title, sub, dur;
         int number;
         Track art;
@@ -155,6 +181,32 @@ final class TvBrowse {
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, px(64));
         bp.bottomMargin = px(34);
         rail.addView(brand, bp);
+
+        searchItem = railItem(R.drawable.ic_search, "Search");
+        searchIcon = (ImageView) searchItem.getChildAt(0);
+        searchLabel = (TextView) searchItem.getChildAt(1);
+        TvUi.focusable(searchItem, 1.04f, new TvUi.FocusChange() {
+            @Override public void onFocus(boolean f) {
+                styleRail();
+                if (pendingTab != null) handler.removeCallbacks(pendingTab);
+                if (f && (tab != SEARCH_TAB || !stack.isEmpty())) {
+                    pendingTab = new Runnable() {
+                        @Override public void run() {
+                            selectTab(SEARCH_TAB, false);
+                        }
+                    };
+                    handler.postDelayed(pendingTab, 320);
+                }
+            }
+        });
+        searchItem.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                selectTab(SEARCH_TAB, true);
+            }
+        });
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, px(88));
+        slp.bottomMargin = px(8);
+        rail.addView(searchItem, slp);
 
         for (int i = 0; i < TABS.length; i++) {
             final int n = i;
@@ -433,6 +485,7 @@ final class TvBrowse {
     /** Remote's Menu/Options key: same as holding OK on the focused song. */
     boolean onMenuKey() {
         View f = root.findFocus();
+        if (f instanceof EditText) return false;
         if (f != null && f.isLongClickable()) {
             f.performLongClick();
             return true;
@@ -629,6 +682,7 @@ final class TvBrowse {
             styleRailItem(railItems[i], railIcons[i], railLabels[i], i == tab);
         }
         styleRailItem(rescanItem, rescanIcon, rescanLabel, false);
+        styleRailItem(searchItem, searchIcon, searchLabel, tab == SEARCH_TAB);
     }
 
     private void selectTab(int n, boolean takeFocus) {
@@ -747,6 +801,9 @@ final class TvBrowse {
             case 2:
                 showSongs(focus);
                 break;
+            case SEARCH_TAB:
+                showSearch(restoreFocus ? searchFocus : 0);
+                break;
             default:
                 showGrid(artistCards(), "Artists", true, focus);
                 break;
@@ -851,6 +908,220 @@ final class TvBrowse {
     }
 
     // ---- grid -----------------------------------------------------------------------------
+
+    // ---- search ---------------------------------------------------------------------------
+
+    private Detail albumDetail(LibraryIndex.Group g) {
+        Detail d = new Detail();
+        d.title = g.name;
+        d.kind = "Album";
+        d.sub1 = g.sub;
+        d.scope = "album";
+        d.ids.addAll(g.ids);
+        d.all.addAll(g.ids);
+        return d;
+    }
+
+    private Detail artistDetail(LibraryIndex.Group g) {
+        Detail d = new Detail();
+        d.title = g.name;
+        d.kind = "Artist";
+        d.scope = "artist";
+        d.ids.addAll(g.ids);
+        d.all.addAll(g.ids);
+        return d;
+    }
+
+    private void showKeyboard(final View v) {
+        v.postDelayed(new Runnable() {
+            @Override public void run() {
+                InputMethodManager imm = (InputMethodManager) act.getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT);
+            }
+        }, 250);
+    }
+
+    private void hideKeyboard(View v) {
+        InputMethodManager imm = (InputMethodManager) act.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+    }
+
+    private void styleSearchField(EditText f, boolean focused) {
+        GradientDrawable d = TvUi.round(focused ? 0xFF2A2A2D : 0xFF212121, 16);
+        d.setStroke(px(focused ? 4 : 2), focused ? Color.WHITE : 0xFF3A3A3A);
+        f.setBackground(d);
+    }
+
+    /** The search page: a field on top (the TV's own on-screen keyboard, with voice) and results below. */
+    private void showSearch(int focus) {
+        LinearLayout box = new LinearLayout(act);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setClipChildren(false);
+        box.setClipToPadding(false);
+
+        final EditText field = new EditText(act);
+        field.setSingleLine(true);
+        field.setHint("Search songs, albums, folders, artists");
+        field.setHintTextColor(0xFF8A8A90);
+        field.setTextColor(Color.WHITE);
+        field.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(30));
+        field.setPadding(px(34), 0, px(34), 0);
+        field.setGravity(Gravity.CENTER_VERTICAL);
+        field.setImeOptions(EditorInfo.IME_ACTION_SEARCH | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+        field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        field.setText(searchQuery);
+        field.setSelection(searchQuery.length());
+        styleSearchField(field, false);
+        TvUi.focusable(field, 1.015f, new TvUi.FocusChange() {
+            @Override public void onFocus(boolean f) {
+                styleSearchField(field, f);
+            }
+        });
+        field.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                showKeyboard(field);
+            }
+        });
+        field.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override public void afterTextChanged(Editable e) {
+                searchQuery = e.toString();
+                handler.removeCallbacks(doSearch);
+                handler.postDelayed(doSearch, 250);
+            }
+        });
+        field.setOnEditorActionListener(new android.widget.TextView.OnEditorActionListener() {
+            @Override public boolean onEditorAction(android.widget.TextView v, int actionId, KeyEvent ev) {
+                hideKeyboard(field);
+                handler.removeCallbacks(doSearch);
+                runSearch();
+                focusItem(1, 1); // row 0 is the "Songs" heading
+                return true;
+            }
+        });
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, px(84));
+        fp.leftMargin = px(104);
+        fp.rightMargin = px(120);
+        fp.topMargin = px(14);
+        fp.bottomMargin = px(14);
+        box.addView(field, fp);
+
+        ListView lv = newList();
+        box.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1f));
+        content.addView(box, new FrameLayout.LayoutParams(-1, -1));
+        searchField = field;
+        list = lv;
+        runSearch();
+        if (focus > 0) focusItem(focus, 1);
+        else if (grab) field.requestFocus();
+    }
+
+    private void runSearch() {
+        ListView lv = list;
+        if (lv == null || tab != SEARCH_TAB || !stack.isEmpty()) return;
+        List<RowItem> items = searchResults(searchQuery);
+        if (items.isEmpty()) {
+            message.setText(searchQuery.trim().isEmpty()
+                    ? "Type to search your songs, folders, albums and artists."
+                    : "No results for “" + searchQuery.trim() + "”");
+            message.setVisibility(View.VISIBLE);
+        } else {
+            message.setVisibility(View.GONE);
+        }
+        RowAdapter a = new RowAdapter(items, "all", "");
+        lv.setAdapter(a);
+        adapter = a;
+    }
+
+    private static boolean hit(String q, String... fields) {
+        for (String s : fields) {
+            if (s != null && s.toLowerCase().contains(q)) return true;
+        }
+        return false;
+    }
+
+    private RowItem header(String text) {
+        RowItem r = new RowItem();
+        r.header = text;
+        r.title = text;
+        return r;
+    }
+
+    private List<RowItem> searchResults(String raw) {
+        List<RowItem> out = new ArrayList<>();
+        String q = raw.trim().toLowerCase();
+        if (q.isEmpty()) return out;
+
+        List<RowItem> songs = new ArrayList<>();
+        for (int id = 0; id < idx.tracks.size() && songs.size() < 60; id++) {
+            Track t = idx.tracks.get(id);
+            if (hit(q, t.title, lastSegment(t.folder), t.artist, t.album, t.composer)) {
+                songs.add(songItem(id, 0, false));
+            }
+        }
+        List<RowItem> folders = new ArrayList<>();
+        for (LibraryIndex.Node n : idx.folderNodes) {
+            if (folders.size() >= 12) break;
+            if (!hit(q, n.name)) continue;
+            RowItem r = new RowItem();
+            r.folder = n;
+            r.title = n.name;
+            String where = n.relPath();
+            r.sub = (where.isEmpty() ? "Folder" : "Folder • " + where) + " • " + folderSub(n);
+            r.art = n.children.isEmpty() && !n.all.isEmpty() ? idx.tracks.get(n.all.get(0)) : null;
+            folders.add(r);
+        }
+        List<RowItem> albums = new ArrayList<>();
+        for (LibraryIndex.Group g : idx.albums) {
+            if (albums.size() >= 12) break;
+            if (!hit(q, g.name, g.sub)) continue;
+            RowItem r = new RowItem();
+            r.group = g;
+            r.groupIsAlbum = true;
+            r.title = g.name;
+            r.sub = (g.sub.isEmpty() ? "Album" : "Album • " + g.sub) + " • " + TvUi.plural(g.ids.size(), "song");
+            r.art = idx.tracks.get(g.ids.get(0));
+            albums.add(r);
+        }
+        List<RowItem> artists = new ArrayList<>();
+        for (LibraryIndex.Group g : idx.artists) {
+            if (artists.size() >= 12) break;
+            if (!hit(q, g.name)) continue;
+            RowItem r = new RowItem();
+            r.group = g;
+            r.title = g.name;
+            r.sub = "Artist • " + TvUi.plural(g.ids.size(), "song");
+            r.art = idx.tracks.get(g.ids.get(0));
+            artists.add(r);
+        }
+        if (!songs.isEmpty()) {
+            out.add(header("Songs"));
+            out.addAll(songs);
+        }
+        if (!folders.isEmpty()) {
+            out.add(header("Folders"));
+            out.addAll(folders);
+        }
+        if (!albums.isEmpty()) {
+            out.add(header("Albums"));
+            out.addAll(albums);
+        }
+        if (!artists.isEmpty()) {
+            out.add(header("Artists"));
+            out.addAll(artists);
+        }
+        return out;
+    }
+
+    private static String lastSegment(String folder) {
+        int i = folder.lastIndexOf('/');
+        return i >= 0 ? folder.substring(i + 1) : folder;
+    }
 
     private TextView heading(String s) {
         TextView h = TvUi.text(act, s, 48, TvUi.TEXT, true);
@@ -1269,6 +1540,22 @@ final class TvBrowse {
         h.scope = scope;
         h.path = path;
         h.detail = detail;
+        boolean hdr = r.header != null;
+        FrameLayout.LayoutParams ilp = (FrameLayout.LayoutParams) h.inner.getLayoutParams();
+        ilp.height = px(hdr ? 70 : 100);
+        h.inner.setLayoutParams(ilp);
+        h.inner.setFocusable(!hdr);
+        h.inner.setClickable(!hdr);
+        h.sub.setVisibility(hdr ? View.GONE : View.VISIBLE);
+        h.dur.setVisibility(hdr ? View.GONE : View.VISIBLE);
+        if (hdr) {
+            h.title.setText(r.header.toUpperCase());
+            h.number.setVisibility(View.GONE);
+            h.art.setVisibility(View.GONE);
+            h.current = false;
+            styleRow(h);
+            return;
+        }
         h.title.setText(r.title);
         h.sub.setText(r.sub);
         h.dur.setText(r.dur == null ? "" : r.dur);
@@ -1289,6 +1576,14 @@ final class TvBrowse {
     }
 
     private void styleRow(RowHolder h) {
+        if (h.item != null && h.item.header != null) {
+            h.inner.setBackground(null);
+            h.title.setTextColor(TvUi.MUTED);
+            h.title.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(24));
+            h.eq.setVisibility(View.GONE);
+            return;
+        }
+        h.title.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(31));
         boolean f = h.focused;
         if (f) {
             GradientDrawable d = TvUi.round(0x29FFFFFF, 14);
@@ -1309,7 +1604,10 @@ final class TvBrowse {
         RowItem r = h.item;
         if (r == null) return;
         if (h.detail != null) h.detail.focus = h.position;
-        if (r.folder != null) {
+        if (tab == SEARCH_TAB) searchFocus = h.position;
+        if (r.group != null) {
+            open(r.groupIsAlbum ? albumDetail(r.group) : artistDetail(r.group));
+        } else if (r.folder != null) {
             open(folderDetail(r.folder));
         } else {
             command("play", "id", String.valueOf(r.id), "scope", h.scope, "path", h.path);
@@ -1319,6 +1617,11 @@ final class TvBrowse {
     // ---- focus helpers --------------------------------------------------------------------
 
     private void focusFirst() {
+        if (tab == SEARCH_TAB && searchField != null) {
+            searchField.requestFocus();
+            showKeyboard(searchField);
+            return;
+        }
         if (list == null) return;
         if (heroPlay != null) focusHero();
         else focusItem(0, COLS);
