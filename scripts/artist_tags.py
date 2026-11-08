@@ -663,11 +663,49 @@ def match_songs(songs, tracks, relaxed=False):
     return assign
 
 
+# ---------------------------------------------------------------- embedding a planned picture
+
+def run_art(a):
+    """Embeds the picture chosen in plan.json into every song of those folders that has no picture yet."""
+    plan = json.load(open(a.plan, encoding='utf-8'))
+    log, failed = [], False
+    for n, (d, p) in enumerate(sorted(plan.items()), 1):
+        if not os.path.isdir(d) or not os.path.isfile(p['path']):
+            print('[%d/%d] %s -> skipped (picture or folder missing)' % (n, len(plan), os.path.basename(d)), flush=True)
+            continue
+        art = open(p['path'], 'rb').read()
+        done = 0
+        for fn in sorted(os.listdir(d)):
+            ext = os.path.splitext(fn)[1].lower()
+            if ext not in ('.wav', '.mp3', '.flac', '.m4a'):
+                continue
+            path = os.path.join(d, fn)
+            try:
+                _, _, has_pic = read_state(path)
+                if has_pic:
+                    continue
+                write_one(path, '', '', art, None)
+                done += 1
+                log.append({'path': path, 'source': p['source'], 'status': 'ok'})
+            except Exception as e:
+                log.append({'path': path, 'source': p['source'], 'status': 'FAILED: %s' % e})
+                print('FAILED %s: %s' % (path, e), flush=True)
+                failed = True
+                break
+        print('[%d/%d] %s -> %d files (%s cover)' % (n, len(plan), os.path.basename(d), done, p['source']), flush=True)
+        if failed:
+            print('stopping at the first failure', flush=True)
+            break
+    json.dump(log, open(os.path.join(a.work, 'art-log.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    print('embedded: %d ok of %d attempted' % (sum(1 for e in log if e['status'] == 'ok'), len(log)), flush=True)
+
+
 # ---------------------------------------------------------------- the dry run
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('command', choices=['dryrun', 'write', 'coverscheck'])
+    ap.add_argument('command', choices=['dryrun', 'write', 'coverscheck', 'art'])
+    ap.add_argument('--plan', default='', help='art: plan.json from art_plan.py')
     ap.add_argument('root', nargs='?', default='')
     ap.add_argument('--work', default=r'D:\Work\AI\usb-music-install\tags')
     ap.add_argument('--only', default='')
@@ -691,6 +729,9 @@ def main():
         return
     if a.command == 'coverscheck':
         run_coverscheck(a)
+        return
+    if a.command == 'art':
+        run_art(a)
         return
     if not a.root:
         ap.error('dryrun needs the music folder')
