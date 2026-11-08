@@ -249,6 +249,12 @@ final class TvBrowse {
 
     void start() {
         handler.post(refresh);
+        // Before the list exists the system would pick any rail item; start on the current tab.
+        handler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (root.findFocus() == null) railItems[tab].requestFocus();
+            }
+        }, 150);
     }
 
     void stop() {
@@ -433,6 +439,8 @@ final class TvBrowse {
         TvUi.focusable(b, big ? 1.12f : 1.14f, new TvUi.FocusChange() {
             @Override public void onFocus(boolean f) {
                 styleCircle(b, big, f);
+                // Back on the buttons: scroll up so the cover and title above them show again.
+                if (f && list != null) list.smoothScrollToPositionFromTop(0, 0, 200);
             }
         });
         b.setOnClickListener(new View.OnClickListener() {
