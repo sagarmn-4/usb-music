@@ -108,6 +108,20 @@ final class LibraryIndex {
         Collections.sort(albums, BY_GROUP);
         Collections.sort(artists, BY_GROUP);
         flatten(tree);
+        for (Node n : folderNodes) byFull.put(n.full, n);
+    }
+
+    private final Map<String, Node> byFull = new LinkedHashMap<>();
+
+    /** The tree folder a song's folder path belongs to, or null (e.g. songs directly in "Music"). */
+    Node nodeFor(String folder) {
+        StringBuilder sb = new StringBuilder();
+        for (String p : folder.split("/")) {
+            if (p.isEmpty()) continue;
+            if (sb.length() > 0) sb.append('/');
+            sb.append(p);
+        }
+        return byFull.get(sb.toString());
     }
 
     /** A leading "Music" folder is dropped; songs directly in it are left out of the tree. */

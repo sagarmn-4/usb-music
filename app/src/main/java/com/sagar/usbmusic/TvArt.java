@@ -73,6 +73,44 @@ final class TvArt {
         });
     }
 
+    interface Result {
+        /** The cover, or null when the song has none. Called on the main thread. */
+        void done(Bitmap b);
+    }
+
+    /** Asks for the song's cover once; unlike load() it does not touch any view. */
+    static void lookup(Context ctx, final Track t, final int want, final Result r) {
+        final String key = key(t);
+        Bitmap hit = CACHE.get(key);
+        if (hit != null) {
+            r.done(hit);
+            return;
+        }
+        if (NONE.contains(key)) {
+            r.done(null);
+            return;
+        }
+        final Context app = ctx.getApplicationContext();
+        POOL.execute(new Runnable() {
+            @Override public void run() {
+                Bitmap bmp = null;
+                try {
+                    byte[] raw = AlbumArt.get(app, t);
+                    if (raw != null) bmp = decode(raw, want);
+                } catch (Exception ignored) {
+                }
+                final Bitmap result = bmp;
+                MAIN.post(new Runnable() {
+                    @Override public void run() {
+                        if (result == null) NONE.add(key);
+                        else CACHE.put(key, result);
+                        r.done(result);
+                    }
+                });
+            }
+        });
+    }
+
     private static Bitmap decode(byte[] raw, int want) {
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inJustDecodeBounds = true;

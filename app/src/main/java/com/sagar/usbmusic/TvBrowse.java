@@ -1,6 +1,7 @@
 package com.sagar.usbmusic;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -46,6 +47,7 @@ final class TvBrowse {
     private static final int[] TAB_ICONS = {
             R.drawable.ic_folder, R.drawable.ic_album, R.drawable.ic_note, R.drawable.ic_person};
     private static final int REST = 0xFFE6E6EA;
+    private static final long AMBIENT_MS = 30000;
 
     private final Activity act;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -53,6 +55,17 @@ final class TvBrowse {
     private final FrameLayout content;
     private final TextView message;
     private final TextView toastView;
+    private final LinearLayout rail;
+    private final View divider;
+    private final TvPlayer player;
+    private final Runnable enterAmbient = new Runnable() {
+        @Override public void run() {
+            if (player.isOpen()) {
+                player.setAmbient(true);
+                rail.animate().alpha(0f).setDuration(1400).start();
+            }
+        }
+    };
     private final LinearLayout[] railItems = new LinearLayout[TABS.length];
     private final ImageView[] railIcons = new ImageView[TABS.length];
     private final TextView[] railLabels = new TextView[TABS.length];
@@ -116,13 +129,13 @@ final class TvBrowse {
         root.setBackgroundColor(TvUi.BG);
 
         // ---- left rail
-        LinearLayout rail = new LinearLayout(activity);
+        rail = new LinearLayout(activity);
         rail.setOrientation(LinearLayout.VERTICAL);
         rail.setPadding(px(28), px(36), px(28), px(30));
         rail.setClipChildren(false);
         rail.setClipToPadding(false);
         root.addView(rail, new FrameLayout.LayoutParams(px(360), -1));
-        View divider = new View(activity);
+        divider = new View(activity);
         divider.setBackgroundColor(0xFF1D1D1D);
         FrameLayout.LayoutParams dl = new FrameLayout.LayoutParams(Math.max(1, px(1)), -1);
         dl.leftMargin = px(360);
@@ -231,12 +244,53 @@ final class TvBrowse {
         mp.leftMargin = mp.rightMargin = px(160);
         content.addView(message, mp);
 
+        player = new TvPlayer(activity, new TvPlayer.Host() {
+            @Override public LibraryIndex index() {
+                return idx;
+            }
+
+            @Override public void command(String cmd, String... kv) {
+                TvBrowse.this.command(cmd, kv);
+            }
+
+            @Override public JSONObject query(String cmd, String... kv) {
+                MusicService s = MusicService.get();
+                return s == null ? null : s.command(cmd, kv);
+            }
+
+            @Override public void toast(String s) {
+                TvBrowse.this.toast(s);
+            }
+
+            @Override public void barShown(boolean shown) {
+                applyBar(shown);
+            }
+
+            @Override public void npOpened(boolean open) {
+                int mode = open ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_BEFORE_DESCENDANTS;
+                rail.setDescendantFocusability(mode);
+                content.setDescendantFocusability(mode);
+                handler.removeCallbacks(enterAmbient);
+                if (open) handler.postDelayed(enterAmbient, AMBIENT_MS);
+                else rail.animate().alpha(1f).setDuration(300).start();
+            }
+
+            @Override public void showMenu(String title, String sub, Track art, String[] labels, Runnable[] actions) {
+                TvBrowse.this.showMenu(title, sub, art, labels, actions);
+            }
+        });
+        FrameLayout.LayoutParams npLp = new FrameLayout.LayoutParams(-1, -1);
+        npLp.leftMargin = px(361);
+        npLp.bottomMargin = px(130);
+        root.addView(player.np(), npLp);
+        root.addView(player.bar(), new FrameLayout.LayoutParams(-1, px(130), Gravity.BOTTOM));
+
         toastView = TvUi.text(activity, "", 28, Color.BLACK, true);
         toastView.setBackground(TvUi.round(Color.WHITE, 40));
         toastView.setPadding(px(38), px(18), px(38), px(18));
         toastView.setAlpha(0f);
         FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        tl.bottomMargin = px(60);
+        tl.bottomMargin = px(170);
         tl.leftMargin = px(360);
         root.addView(toastView, tl);
 
@@ -263,6 +317,10 @@ final class TvBrowse {
 
     /** Back button: goes up one level. Returns false when already at the top. */
     boolean onBack() {
+        if (player.isOpen()) {
+            player.closeNp();
+            return true;
+        }
         if (!stack.isEmpty()) {
             stack.remove(stack.size() - 1);
             showCurrent(true);
@@ -332,8 +390,148 @@ final class TvBrowse {
                 changed = true;
             }
             if (changed && adapter != null) adapter.notifyDataSetChanged();
+            player.update(st, idx);
         } catch (Exception ignored) {
         }
+    }
+
+    /** Leaves room for the player bar when something is loaded. */
+    private void applyBar(boolean shown) {
+        int bottom = shown ? px(130) : 0;
+        FrameLayout.LayoutParams rl = (FrameLayout.LayoutParams) rail.getLayoutParams();
+        rl.bottomMargin = bottom;
+        rail.setLayoutParams(rl);
+        FrameLayout.LayoutParams dl = (FrameLayout.LayoutParams) divider.getLayoutParams();
+        dl.bottomMargin = bottom;
+        divider.setLayoutParams(dl);
+        FrameLayout.LayoutParams cl = (FrameLayout.LayoutParams) content.getLayoutParams();
+        cl.bottomMargin = shown ? px(130) : px(30);
+        content.setLayoutParams(cl);
+    }
+
+    /** Called for every key press. True when the key only woke the screen from ambient mode. */
+    boolean onActivity() {
+        handler.removeCallbacks(enterAmbient);
+        if (player.isOpen()) handler.postDelayed(enterAmbient, AMBIENT_MS);
+        if (player.isAmbient()) {
+            player.setAmbient(false);
+            rail.animate().alpha(1f).setDuration(300).start();
+            return true;
+        }
+        return false;
+    }
+
+    /** Remote's Menu/Options key: same as holding OK on the focused song. */
+    boolean onMenuKey() {
+        View f = root.findFocus();
+        if (f != null && f.isLongClickable()) {
+            f.performLongClick();
+            return true;
+        }
+        return false;
+    }
+
+    void seekBy(int deltaMs) {
+        player.seekBy(deltaMs);
+    }
+
+    // ---- popup menu -----------------------------------------------------------------------
+
+    private void showMenu(String title, String sub, Track art, String[] labels, final Runnable[] actions) {
+        final Dialog d = new Dialog(act, android.R.style.Theme_Translucent_NoTitleBar);
+        FrameLayout scrim = new FrameLayout(act);
+        scrim.setBackgroundColor(0x99000000);
+        LinearLayout box = new LinearLayout(act);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(TvUi.round(0xFF232326, 30));
+        box.setPadding(px(30), px(30), px(30), px(24));
+        LinearLayout head = new LinearLayout(act);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(px(10), px(4), px(10), px(22));
+        TvUi.ArtView a = new TvUi.ArtView(act, px(84), false, 10);
+        if (art != null) TvArt.load(act, a, art, R.drawable.ic_note);
+        else a.showIcon(0, R.drawable.ic_note, true);
+        head.addView(a, new LinearLayout.LayoutParams(px(84), px(84)));
+        LinearLayout t = new LinearLayout(act);
+        t.setOrientation(LinearLayout.VERTICAL);
+        t.addView(TvUi.text(act, title, 30, TvUi.TEXT, true));
+        t.addView(TvUi.text(act, sub, 22, TvUi.MUTED, false));
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
+        tp.leftMargin = px(20);
+        head.addView(t, tp);
+        box.addView(head);
+        TextView first = null;
+        for (int i = 0; i < labels.length; i++) {
+            final int n = i;
+            final TextView item = TvUi.text(act, labels[i], 30, TvUi.TEXT, true);
+            item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setPadding(px(30), 0, px(30), 0);
+            TvUi.focusable(item, 1.02f, new TvUi.FocusChange() {
+                @Override public void onFocus(boolean f) {
+                    item.setBackground(f ? TvUi.round(Color.WHITE, 18) : null);
+                    item.setTextColor(f ? Color.BLACK : TvUi.TEXT);
+                }
+            });
+            item.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    d.dismiss();
+                    actions[n].run();
+                }
+            });
+            box.addView(item, new LinearLayout.LayoutParams(-1, px(88)));
+            if (first == null) first = item;
+        }
+        scrim.addView(box, new FrameLayout.LayoutParams(px(760), -2, Gravity.CENTER));
+        d.setContentView(scrim);
+        d.setCancelable(true);
+        d.show();
+        d.getWindow().setLayout(-1, -1);
+        if (first != null) first.requestFocus();
+    }
+
+    private void openSongMenu(RowHolder h) {
+        final RowItem r = h.item;
+        if (r == null || r.id < 0) return;
+        final Track t = idx.tracks.get(r.id);
+        final String id = String.valueOf(r.id);
+        showMenu(t.title, subOf(t), t, new String[]{"Play next", "Add to queue", "Go to folder"}, new Runnable[]{
+                new Runnable() {
+                    @Override public void run() {
+                        boolean idle = curId < 0;
+                        command("playnext", "id", id);
+                        toast(idle ? "Playing" : "Playing next");
+                    }
+                },
+                new Runnable() {
+                    @Override public void run() {
+                        boolean idle = curId < 0;
+                        command("enqueue", "id", id);
+                        toast(idle ? "Playing" : "Added to the queue");
+                    }
+                },
+                new Runnable() {
+                    @Override public void run() {
+                        goToFolder(t);
+                    }
+                }});
+    }
+
+    private void goToFolder(Track t) {
+        LibraryIndex.Node n = idx.nodeFor(t.folder);
+        if (n == null) {
+            toast("This song is not inside a folder");
+            return;
+        }
+        if (player.isOpen()) player.closeNp();
+        List<LibraryIndex.Node> chain = new ArrayList<>();
+        for (LibraryIndex.Node p = n; p != null; p = p.parent) chain.add(0, p);
+        tab = 0;
+        stack.clear();
+        for (LibraryIndex.Node p : chain) stack.add(folderDetail(p));
+        styleRail();
+        showCurrent(false);
+        focusHero();
     }
 
     private void updateMessage(MusicService s) {
@@ -994,6 +1192,14 @@ final class TvBrowse {
         h.inner.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 clickRow(h);
+            }
+        });
+        // Holding OK (or the remote's Menu key) opens Play next / Add to queue / Go to folder.
+        h.inner.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                if (h.item == null || h.item.id < 0) return false;
+                openSongMenu(h);
+                return true;
             }
         });
         return wrap;

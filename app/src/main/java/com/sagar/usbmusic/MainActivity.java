@@ -57,10 +57,25 @@ public class MainActivity extends Activity {
         if (!browse.onBack()) super.onBackPressed();
     }
 
+    /** Any key wakes the screen from ambient mode (that key is then not used for anything else). */
+    @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN && browse.onActivity()) return true;
+        return super.dispatchKeyEvent(event);
+    }
+
     /** Media keys work on every screen, whatever has the focus. */
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_MENU && event.getRepeatCount() == 0 && browse.onMenuKey()) {
+            return true;
+        }
         if (event.getRepeatCount() == 0) {
             switch (keyCode) {
+                case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                    browse.seekBy(10000);
+                    return true;
+                case KeyEvent.KEYCODE_MEDIA_REWIND:
+                    browse.seekBy(-10000);
+                    return true;
                 case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 case KeyEvent.KEYCODE_MEDIA_PLAY:
                 case KeyEvent.KEYCODE_MEDIA_PAUSE:
