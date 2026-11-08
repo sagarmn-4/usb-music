@@ -35,6 +35,3 @@ Plug in the USB drive first (or tap Rescan USB on the TV screen or the phone pag
 ## Backlog
 
 - Native phone app (install on the phone instead of using the browser).
-- PIN for the phone page.
-- On/off switch on the TV screen (off by default): stops the service and the boot start.
-- Control the Yamaha receiver directly for a true mute and exact volume (needs its address; guard with a volume ceiling).
