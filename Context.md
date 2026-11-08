@@ -23,7 +23,10 @@ app/src/main/java/com/sagar/usbmusic/
   MusicService.java    foreground service: MediaPlayer, queue, state, wake lock while playing, volume, rescans (~800 lines)
   WebServer.java       tiny HTTP server (port 8080, next free up to 8089): /api/* commands, /art?id= cover images, serves the page
   LibraryScanner.java  scans /storage/* volumes for audio; falls back to MediaStore; skips media-db rows whose file is gone
-  MainActivity.java    TV screen: address, QR code (zxing), Rescan button
+  MainActivity.java    hosts the TV screen; permission, service start, media keys, Menu key, ambient wake
+  TvBrowse.java        TV screen: left rail (Search, Folders, Albums, Songs, Artists, Rescan USB, small QR), grids, folder/album/artist pages, search page, popup menu
+  TvPlayer.java        player bar along the bottom and the now-playing page (cover or record, tint, Up next queue, ambient mode)
+  TvUi.java, TvArt.java, LibraryIndex.java   shared TV look (sizes in 1920x1080 units), cover loading, folder tree/albums/artists (same grouping as index.html)
   AlbumArt.java        embedded cover / folder.jpg lookup for /art
   CoverFetcher.java    optional online cover fetch (writes folder.jpg). Auto mode is OFF by default; leave it off
   WavTags.java         reads ID3 from the `id3 ` chunk of WAV files
@@ -35,6 +38,15 @@ scripts/                         one-off PC tools for the drive's tags, covers a
 ```
 
 Phone page: YouTube Music styling (Roboto, tabs Folders | Albums | Songs | Artists with Folders first, numbered track lists with durations, global search that works from any tab, mini player to full now-playing screen with a spinning record and a moving equalizer on the label, cover-colour tint, reorderable Up next queue with Play next / Add to queue, "Go to folder", lock-screen controls, TV volume as a small bar with − and + and the number). No album art is shown for folders that contain folders.
+
+TV screen (built 2026-11-08, same design language as the phone page, driven by the same `MusicService`, so phone and TV stay in sync; no second player): plain Java views, no AndroidX UI.
+- Design reference: `design/tv-preview.html`, a clickable browser mockup (keyboard = remote). It follows the YouTube Music web layout: left rail, centred folder/album/artist page with shuffle / big Play / add-to-queue, full-width bottom player bar with the progress line on top, now-playing page with Up next on the right.
+- Remote keys: D-pad moves, OK selects, hold OK or the Menu key opens Play next / Add to queue / Go to folder (on a queue row: Play now / Remove), Back goes up one level (menu, now playing, folder, tab). Media keys: Play/Pause (Play and Pause act only on their own), Next, Previous, Fast-forward/Rewind seek 10 s. Left/Right on the progress line seek 10 s. Down from the last row reaches the bar, Up from the progress line returns to the last list item (handled in `TvBrowse.onNavKey`; a ListView keeps those keys otherwise).
+- Search is a rail item: an `EditText` with the TV's own keyboard (it has voice), live results grouped Songs / Folders / Albums / Artists. Resting on a rail item for about 0.3 s opens that tab.
+- Ambient mode: after 30 s on the now-playing page everything fades except cover and title; any key wakes it (that key is swallowed).
+- No volume buttons on the TV screen on purpose (use the remote's volume keys). The QR code and address sit small at the bottom of the rail.
+- Not built yet: resume the last song after a restart, fast scroll (Ch+/Ch- page jump, letter badge), a Cover/Record toggle.
+- No local compiler on the PC: the CI build is the compile check. Test on the TV with `adb shell input keyevent ...` plus `adb exec-out screencap -p`; `curl http://192.168.1.6:8080/api/state` shows what the player is doing.
 
 ## Build, install, update
 

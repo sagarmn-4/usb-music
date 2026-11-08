@@ -9,7 +9,8 @@ Plays the music on a USB drive plugged into the TV, through the TV speakers. A p
 - The phone opens `http://<tv-ip>:8080`. The page is laid out like YouTube Music: Folders, Albums, Songs and Artists tabs, a global search, a mini player that opens a full now-playing screen (embedded cover art, or a spinning record when a song has none), lock-screen controls, "Go to folder", and TV volume with − and +.
 - The page is `app/src/main/assets/index.html`. `push-page.ps1` sends an edited copy to the TV (debug build, `run-as`) so it can change without reinstalling; a reinstall goes back to the page built into the APK.
 - TV volume goes through HDMI-CEC to the receiver, which only follows small steps: big jumps and a volume of 0 get put back. The page therefore has no Mute button.
-- The TV screen shows the address and a QR code to scan with the phone camera. The service starts on boot and rescans when a drive is mounted or removed.
+- The TV screen is a player too, laid out like YouTube Music and driven with the remote: a left rail (Search, Folders, Albums, Songs, Artists, Rescan USB), cover grids, folder / album / artist pages with Shuffle, Play and Add to queue, a player bar along the bottom, a now-playing page with the Up next queue, and search with the TV's keyboard. Hold OK on a song for Play next / Add to queue / Go to folder. It uses the same player as the phone page, so both always show the same song and queue. A small QR code and the address are at the bottom of the rail. `design/tv-preview.html` is a clickable mockup of this design.
+- The service starts on boot and rescans when a drive is mounted or removed.
 - There is no password. Anyone on your Wi-Fi who knows the address can control the music.
 
 ## Build
