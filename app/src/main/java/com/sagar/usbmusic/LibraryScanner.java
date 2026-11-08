@@ -5,6 +5,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
 
 import java.io.File;
@@ -137,6 +139,7 @@ final class LibraryScanner {
     }
 
     private static void queryMediaStore(Context ctx, List<Track> out, StringBuilder log) {
+        final boolean canCheckFiles = Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager();
         try {
             for (String vol : MediaStore.getExternalVolumeNames(ctx)) {
                 if (MediaStore.VOLUME_EXTERNAL_PRIMARY.equals(vol)) continue;
@@ -166,6 +169,9 @@ final class LibraryScanner {
                         while (rel.endsWith("/")) rel = rel.substring(0, rel.length() - 1);
                         if (inSkippedDir(rel)) continue;
                         String data = c.getString(7);
+                        // The media database keeps rows for files that were renamed or deleted while the
+                        // drive was elsewhere; with file access we can tell and leave them out.
+                        if (canCheckFiles && data != null && !new File(data).exists()) continue;
                         Uri uri = ContentUris.withAppendedId(base, c.getLong(0));
                         String artist = clean(c.getString(4));
                         String composer = clean(c.getString(8));
