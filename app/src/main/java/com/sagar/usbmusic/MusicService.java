@@ -755,6 +755,27 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         togglePlay();
     }
 
+    /** A copy of the library; a song's id is its position here. Call from the main thread. */
+    List<Track> librarySnapshot() {
+        return new ArrayList<>(library);
+    }
+
+    /** Changes whenever a scan replaces the library. */
+    int libraryVersion() {
+        return version;
+    }
+
+    boolean isScanning() {
+        return scanning;
+    }
+
+    /** Runs a phone-page command (play, next, seek, ...) from the TV screen; same code path. */
+    JSONObject command(String cmd, String... keyValues) {
+        Map<String, String> q = new HashMap<>();
+        for (int i = 0; i + 1 < keyValues.length; i += 2) q.put(keyValues[i], keyValues[i + 1]);
+        return api(cmd, q);
+    }
+
     // ---- notification ---------------------------------------------------------------------
 
     private Notification buildNotification() {
