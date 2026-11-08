@@ -145,9 +145,11 @@ final class TvUi {
             setPadding(pad, pad, pad, pad);
             setScaleType(ScaleType.FIT_CENTER);
             setImageResource(iconRes);
+            setColorFilter(grey ? 0xFFC9C9CF : Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
         }
 
         void showBitmap(Bitmap b) {
+            clearColorFilter();
             setPadding(0, 0, 0, 0);
             setScaleType(ScaleType.CENTER_CROP);
             setImageBitmap(b);

@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -34,20 +36,29 @@ import java.util.Random;
 import static com.sagar.usbmusic.TvUi.px;
 
 /**
- * The TV screen: header with the tabs, then Folders / Albums / Songs / Artists, and a folder,
- * album or artist screen on top. It talks to the same MusicService as the phone page, so both
- * always show the same queue and state. Step 1 of the TV player: browsing and starting songs.
+ * The TV screen, laid out like YouTube Music: a left rail (Folders, Albums, Songs, Artists), the
+ * lists on the right, and a folder / album / artist page with a centred cover and big buttons.
+ * It talks to the same MusicService as the phone page, so both always show the same queue and state.
  */
 final class TvBrowse {
-    private static final int COLS = 5;
+    private static final int COLS = 4;
     private static final String[] TABS = {"Folders", "Albums", "Songs", "Artists"};
+    private static final int[] TAB_ICONS = {
+            R.drawable.ic_folder, R.drawable.ic_album, R.drawable.ic_note, R.drawable.ic_person};
+    private static final int REST = 0xFFE6E6EA;
 
     private final Activity act;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final FrameLayout root;
     private final FrameLayout content;
     private final TextView message;
-    private final TextView[] tabViews = new TextView[TABS.length];
+    private final TextView toastView;
+    private final LinearLayout[] railItems = new LinearLayout[TABS.length];
+    private final ImageView[] railIcons = new ImageView[TABS.length];
+    private final TextView[] railLabels = new TextView[TABS.length];
+    private LinearLayout rescanItem;
+    private ImageView rescanIcon;
+    private TextView rescanLabel;
     private final TextView urlView;
     private final ImageView qrView;
     private String qrFor = "";
@@ -63,8 +74,9 @@ final class TvBrowse {
     private int artVer = -1;
     private ListView list;
     private BaseAdapter adapter;
+    private View heroPlay;
     private Runnable pendingTab;
-    /** False while a tab is being previewed, so the new list does not take the focus off the tabs. */
+    /** False while a tab is being previewed, so the new list does not take the focus off the rail. */
     private boolean grab = true;
 
     /** One folder / album / artist screen. */
@@ -103,74 +115,89 @@ final class TvBrowse {
         root = new FrameLayout(activity);
         root.setBackgroundColor(TvUi.BG);
 
-        // ---- header
-        LinearLayout header = new LinearLayout(activity);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(px(96), px(30), px(96), 0);
-        header.setClipChildren(false);
-        root.addView(header, new FrameLayout.LayoutParams(-1, px(170)));
+        // ---- left rail
+        LinearLayout rail = new LinearLayout(activity);
+        rail.setOrientation(LinearLayout.VERTICAL);
+        rail.setPadding(px(28), px(36), px(28), px(30));
+        rail.setClipChildren(false);
+        rail.setClipToPadding(false);
+        root.addView(rail, new FrameLayout.LayoutParams(px(360), -1));
+        View divider = new View(activity);
+        divider.setBackgroundColor(0xFF1D1D1D);
+        FrameLayout.LayoutParams dl = new FrameLayout.LayoutParams(Math.max(1, px(1)), -1);
+        dl.leftMargin = px(360);
+        root.addView(divider, dl);
 
+        LinearLayout brand = new LinearLayout(activity);
+        brand.setOrientation(LinearLayout.HORIZONTAL);
+        brand.setGravity(Gravity.CENTER_VERTICAL);
+        brand.setPadding(px(16), 0, 0, 0);
         ImageView logo = new ImageView(activity);
         logo.setImageResource(R.drawable.ic_launcher);
-        header.addView(logo, new LinearLayout.LayoutParams(px(56), px(56)));
-        TextView brand = TvUi.text(activity, "USB Music", 34, TvUi.TEXT, true);
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-2, -2);
-        bp.leftMargin = px(16);
-        bp.rightMargin = px(40);
-        header.addView(brand, bp);
+        brand.addView(logo, new LinearLayout.LayoutParams(px(56), px(56)));
+        TextView name = TvUi.text(activity, "USB Music", 34, TvUi.TEXT, true);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2);
+        np.leftMargin = px(16);
+        brand.addView(name, np);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, px(64));
+        bp.bottomMargin = px(34);
+        rail.addView(brand, bp);
 
         for (int i = 0; i < TABS.length; i++) {
             final int n = i;
-            final TextView t = TvUi.text(activity, TABS[i], 30, 0xFFCFCFD4, true);
-            t.setGravity(Gravity.CENTER);
-            t.setPadding(px(34), 0, px(34), 0);
-            TvUi.focusable(t, 1.06f, new TvUi.FocusChange() {
+            LinearLayout item = railItem(TAB_ICONS[i], TABS[i]);
+            railItems[i] = item;
+            railIcons[i] = (ImageView) item.getChildAt(0);
+            railLabels[i] = (TextView) item.getChildAt(1);
+            TvUi.focusable(item, 1.04f, new TvUi.FocusChange() {
                 @Override public void onFocus(boolean f) {
-                    styleTabs();
+                    styleRail();
                     if (pendingTab != null) handler.removeCallbacks(pendingTab);
-                    if (f && n != tab) {
-                        // Resting on a tab for a moment opens it, so moving across the tabs previews each one.
+                    if (f && (n != tab || !stack.isEmpty())) {
+                        // Resting on a rail item for a moment opens it, so moving down the rail previews each tab.
                         pendingTab = new Runnable() {
                             @Override public void run() {
                                 selectTab(n, false);
                             }
                         };
-                        handler.postDelayed(pendingTab, 280);
+                        handler.postDelayed(pendingTab, 320);
                     }
                 }
             });
-            t.setOnClickListener(new View.OnClickListener() {
+            item.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
                     selectTab(n, true);
                 }
             });
-            tabViews[i] = t;
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, px(68));
-            lp.rightMargin = px(8);
-            header.addView(t, lp);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, px(88));
+            lp.bottomMargin = px(8);
+            rail.addView(item, lp);
         }
-        header.addView(new View(activity), new LinearLayout.LayoutParams(0, 1, 1f));
+        rail.addView(new View(activity), new LinearLayout.LayoutParams(1, 0, 1f));
 
-        TextView rescan = TvUi.text(activity, "Rescan", 26, 0xFFCFCFD4, true);
-        rescan.setGravity(Gravity.CENTER);
-        rescan.setPadding(px(30), 0, px(30), 0);
-        pillStyle(rescan, false, false);
-        TvUi.focusable(rescan, 1.06f, new PillFocus(rescan, false));
-        rescan.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                act.startService(new Intent(act, MusicService.class).setAction(MusicService.ACTION_RESCAN));
+        rescanItem = railItem(R.drawable.ic_refresh, "Rescan USB");
+        rescanIcon = (ImageView) rescanItem.getChildAt(0);
+        rescanLabel = (TextView) rescanItem.getChildAt(1);
+        TvUi.focusable(rescanItem, 1.04f, new TvUi.FocusChange() {
+            @Override public void onFocus(boolean f) {
+                styleRail();
             }
         });
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, px(60));
-        rp.rightMargin = px(28);
-        header.addView(rescan, rp);
+        rescanItem.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                act.startService(new Intent(act, MusicService.class).setAction(MusicService.ACTION_RESCAN));
+                toast("Scanning the USB drive…");
+            }
+        });
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, px(88));
+        rp.bottomMargin = px(14);
+        rail.addView(rescanItem, rp);
 
         LinearLayout qrBox = new LinearLayout(activity);
         qrBox.setOrientation(LinearLayout.HORIZONTAL);
         qrBox.setGravity(Gravity.CENTER_VERTICAL);
-        qrBox.setPadding(px(10), px(10), px(22), px(10));
-        qrBox.setBackground(TvUi.round(0x12FFFFFF, 20));
+        qrBox.setPadding(px(12), px(12), px(12), px(12));
+        qrBox.setBackground(TvUi.round(0x10FFFFFF, 20));
         FrameLayout qrCard = new FrameLayout(activity);
         qrCard.setBackground(TvUi.round(Color.WHITE, 10));
         qrCard.setPadding(px(6), px(6), px(6), px(6));
@@ -179,18 +206,20 @@ final class TvBrowse {
         qrBox.addView(qrCard, new LinearLayout.LayoutParams(px(88), px(88)));
         LinearLayout qrText = new LinearLayout(activity);
         qrText.setOrientation(LinearLayout.VERTICAL);
-        qrText.setPadding(px(16), 0, 0, 0);
-        qrText.addView(TvUi.text(activity, "Open on phone", 22, TvUi.TEXT, true));
-        urlView = TvUi.text(activity, "starting…", 20, TvUi.MUTED, false);
+        qrText.setPadding(px(14), 0, 0, 0);
+        qrText.addView(TvUi.text(activity, "Open on phone", 20, TvUi.TEXT, true));
+        urlView = TvUi.text(activity, "starting…", 18, TvUi.MUTED, false);
         qrText.addView(urlView);
-        qrBox.addView(qrText);
-        header.addView(qrBox);
+        qrBox.addView(qrText, new LinearLayout.LayoutParams(0, -2, 1f));
+        rail.addView(qrBox, new LinearLayout.LayoutParams(-1, -2));
 
         // ---- content
         content = new FrameLayout(activity);
         content.setClipChildren(false);
+        content.setClipToPadding(false);
         FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, -1);
-        cp.topMargin = px(170);
+        cp.leftMargin = px(360) + Math.max(1, px(1));
+        cp.topMargin = px(30);
         cp.bottomMargin = px(30);
         root.addView(content, cp);
 
@@ -199,10 +228,19 @@ final class TvBrowse {
         message.setGravity(Gravity.CENTER);
         message.setVisibility(View.GONE);
         FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
-        mp.leftMargin = mp.rightMargin = px(300);
+        mp.leftMargin = mp.rightMargin = px(160);
         content.addView(message, mp);
 
-        styleTabs();
+        toastView = TvUi.text(activity, "", 28, Color.BLACK, true);
+        toastView.setBackground(TvUi.round(Color.WHITE, 40));
+        toastView.setPadding(px(38), px(18), px(38), px(18));
+        toastView.setAlpha(0f);
+        FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        tl.bottomMargin = px(60);
+        tl.leftMargin = px(360);
+        root.addView(toastView, tl);
+
+        styleRail();
     }
 
     View view() {
@@ -231,8 +269,6 @@ final class TvBrowse {
         return false;
     }
 
-    // ---- media keys (also used by the activity) -------------------------------------------
-
     void command(String cmd, String... kv) {
         MusicService s = MusicService.get();
         if (s != null) {
@@ -240,6 +276,20 @@ final class TvBrowse {
             tick();
         }
     }
+
+    private void toast(String s) {
+        toastView.setText(s);
+        toastView.animate().cancel();
+        toastView.animate().alpha(1f).setDuration(200).start();
+        handler.removeCallbacks(hideToast);
+        handler.postDelayed(hideToast, 1900);
+    }
+
+    private final Runnable hideToast = new Runnable() {
+        @Override public void run() {
+            toastView.animate().alpha(0f).setDuration(300).start();
+        }
+    };
 
     // ---- state ----------------------------------------------------------------------------
 
@@ -282,10 +332,41 @@ final class TvBrowse {
 
     private void updateMessage(MusicService s) {
         message.setText(s.isScanning() ? "Scanning the USB drive…"
-                : "No music found.\nPlug the USB drive into the TV, then choose Rescan.");
+                : "No music found.\nPlug the USB drive into the TV, then choose Rescan USB.");
     }
 
-    // ---- tabs -----------------------------------------------------------------------------
+    // ---- rail -----------------------------------------------------------------------------
+
+    private LinearLayout railItem(int icon, String label) {
+        LinearLayout it = new LinearLayout(act);
+        it.setOrientation(LinearLayout.HORIZONTAL);
+        it.setGravity(Gravity.CENTER_VERTICAL);
+        it.setPadding(px(30), 0, px(20), 0);
+        ImageView ic = new ImageView(act);
+        ic.setImageResource(icon);
+        ic.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        it.addView(ic, new LinearLayout.LayoutParams(px(40), px(40)));
+        TextView t = TvUi.text(act, label, 32, REST, true);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
+        tp.leftMargin = px(24);
+        it.addView(t, tp);
+        return it;
+    }
+
+    private void styleRailItem(LinearLayout item, ImageView icon, TextView label, boolean on) {
+        boolean f = item.hasFocus();
+        item.setBackground(f ? TvUi.round(Color.WHITE, 44) : on ? TvUi.round(0x1FFFFFFF, 44) : null);
+        int c = f ? Color.BLACK : on ? Color.WHITE : REST;
+        label.setTextColor(c);
+        icon.setColorFilter(c, PorterDuff.Mode.SRC_IN);
+    }
+
+    private void styleRail() {
+        for (int i = 0; i < railItems.length; i++) {
+            styleRailItem(railItems[i], railIcons[i], railLabels[i], i == tab);
+        }
+        styleRailItem(rescanItem, rescanIcon, rescanLabel, false);
+    }
 
     private void selectTab(int n, boolean takeFocus) {
         if (pendingTab != null) handler.removeCallbacks(pendingTab);
@@ -293,21 +374,11 @@ final class TvBrowse {
         tab = n;
         stack.clear();
         rootFocus = 0;
-        styleTabs();
+        styleRail();
         grab = takeFocus;
         if (!same) showCurrent(false);
         grab = true;
         if (takeFocus) focusFirst();
-    }
-
-    private void styleTabs() {
-        for (int i = 0; i < tabViews.length; i++) {
-            TextView t = tabViews[i];
-            boolean f = t.hasFocus();
-            boolean on = i == tab;
-            t.setBackground(f ? TvUi.round(Color.WHITE, 34) : on ? TvUi.round(0x1FFFFFFF, 34) : null);
-            t.setTextColor(f ? TvUi.DARK_TEXT : on ? TvUi.TEXT : 0xFFCFCFD4);
-        }
     }
 
     private void pillStyle(TextView t, boolean primary, boolean focused) {
@@ -319,7 +390,7 @@ final class TvBrowse {
             t.setTextColor(Color.BLACK);
         } else {
             t.setBackground(TvUi.round(0x1FFFFFFF, 38));
-            t.setTextColor(0xFFE6E6EA);
+            t.setTextColor(REST);
         }
     }
 
@@ -351,6 +422,36 @@ final class TvBrowse {
         return t;
     }
 
+    /** Round icon button, like the shuffle / play / add-to-queue buttons on a YouTube Music album page. */
+    private ImageView circle(int icon, final boolean big, final Runnable action) {
+        final ImageView b = new ImageView(act);
+        int pad = px(big ? 30 : 22);
+        b.setPadding(pad, pad, pad, pad);
+        b.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        b.setImageResource(icon);
+        styleCircle(b, big, false);
+        TvUi.focusable(b, big ? 1.12f : 1.14f, new TvUi.FocusChange() {
+            @Override public void onFocus(boolean f) {
+                styleCircle(b, big, f);
+            }
+        });
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                action.run();
+            }
+        });
+        return b;
+    }
+
+    private void styleCircle(ImageView b, boolean big, boolean focused) {
+        GradientDrawable d = new GradientDrawable();
+        d.setShape(GradientDrawable.OVAL);
+        d.setColor(focused ? (big ? TvUi.ACCENT : Color.WHITE) : big ? Color.WHITE : 0x1AFFFFFF);
+        b.setBackground(d);
+        b.setColorFilter(focused ? (big ? Color.WHITE : Color.BLACK) : big ? Color.BLACK : Color.WHITE,
+                PorterDuff.Mode.SRC_IN);
+    }
+
     // ---- screens --------------------------------------------------------------------------
 
     private void showCurrent(boolean restoreFocus) {
@@ -358,6 +459,7 @@ final class TvBrowse {
         content.addView(message);
         list = null;
         adapter = null;
+        heroPlay = null;
         MusicService s = MusicService.get();
         if (idx.tracks.isEmpty()) {
             message.setVisibility(View.VISIBLE);
@@ -480,14 +582,14 @@ final class TvBrowse {
     private void open(Detail d) {
         stack.add(d);
         showCurrent(false);
-        focusFirstRow();
+        focusHero();
     }
 
     // ---- grid -----------------------------------------------------------------------------
 
     private TextView heading(String s) {
-        TextView h = TvUi.text(act, s, 46, TvUi.TEXT, true);
-        h.setPadding(px(110), px(8), 0, px(22));
+        TextView h = TvUi.text(act, s, 48, TvUi.TEXT, true);
+        h.setPadding(px(104), px(10), 0, px(24));
         return h;
     }
 
@@ -495,7 +597,7 @@ final class TvBrowse {
         ListView lv = new ListView(act);
         lv.setDivider(null);
         lv.setDividerHeight(0);
-        lv.setSelector(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        lv.setSelector(new ColorDrawable(Color.TRANSPARENT));
         lv.setOverScrollMode(View.OVER_SCROLL_NEVER);
         lv.setVerticalScrollBarEnabled(false);
         lv.setItemsCanFocus(true);
@@ -544,10 +646,11 @@ final class TvBrowse {
                 row = new LinearLayout(act);
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setClipChildren(false);
-                row.setPadding(px(110), px(10), 0, px(36));
+                row.setClipToPadding(false);
+                row.setPadding(px(104), px(14), 0, px(40));
                 for (int c = 0; c < COLS; c++) {
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(300), -2);
-                    lp.rightMargin = px(52);
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(320), -2);
+                    lp.rightMargin = px(50);
                     row.addView(newCard(circle), lp);
                 }
             }
@@ -576,8 +679,8 @@ final class TvBrowse {
         LinearLayout c = new LinearLayout(act);
         c.setOrientation(LinearLayout.VERTICAL);
         final CardHolder h = new CardHolder();
-        h.art = new TvUi.ArtView(act, px(300), circle, 18);
-        c.addView(h.art, new LinearLayout.LayoutParams(px(300), px(300)));
+        h.art = new TvUi.ArtView(act, px(320), circle, 14);
+        c.addView(h.art, new LinearLayout.LayoutParams(px(320), px(320)));
         h.title = TvUi.text(act, "", 28, TvUi.TEXT, true);
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, -2);
         tp.topMargin = px(16);
@@ -591,7 +694,7 @@ final class TvBrowse {
             h.sub.setGravity(Gravity.CENTER);
         }
         c.setTag(h);
-        TvUi.focusable(c, 1.07f, new TvUi.FocusChange() {
+        TvUi.focusable(c, 1.06f, new TvUi.FocusChange() {
             @Override public void onFocus(boolean f) {
                 h.art.setRing(f);
             }
@@ -646,10 +749,14 @@ final class TvBrowse {
         ListView lv = newList();
         LinearLayout head = new LinearLayout(act);
         head.setOrientation(LinearLayout.VERTICAL);
+        head.setClipChildren(false);
+        head.setClipToPadding(false);
         head.addView(heading("Songs"));
         LinearLayout btns = new LinearLayout(act);
         btns.setOrientation(LinearLayout.HORIZONTAL);
-        btns.setPadding(px(110), 0, 0, px(20));
+        btns.setClipChildren(false);
+        btns.setClipToPadding(false);
+        btns.setPadding(px(104), px(4), 0, px(22));
         final List<Integer> all = new ArrayList<>();
         for (int i = 0; i < idx.tracks.size(); i++) all.add(i);
         btns.addView(pill("Play all", true, new Runnable() {
@@ -668,7 +775,7 @@ final class TvBrowse {
         lv.addHeaderView(head, null, false);
         List<RowItem> items = new ArrayList<>();
         for (int id : all) items.add(songItem(id, 0, false));
-        final RowAdapter a = new RowAdapter(items, "all", "", px(110));
+        final RowAdapter a = new RowAdapter(items, "all", "");
         lv.setAdapter(a);
         content.addView(lv, new FrameLayout.LayoutParams(-1, -1));
         list = lv;
@@ -676,57 +783,84 @@ final class TvBrowse {
         focusItem(focus, 1);
     }
 
-    private void showDetail(Detail d, boolean restoreFocus) {
-        LinearLayout box = new LinearLayout(act);
-        box.setOrientation(LinearLayout.HORIZONTAL);
-        box.setClipChildren(false);
-        box.setPadding(px(96), px(10), px(60), 0);
+    private View heroView(final Detail d) {
+        LinearLayout hero = new LinearLayout(act);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setGravity(Gravity.CENTER_HORIZONTAL);
+        hero.setClipChildren(false);
+        hero.setClipToPadding(false);
+        hero.setPadding(px(60), px(6), px(60), px(34));
 
-        LinearLayout side = new LinearLayout(act);
-        side.setOrientation(LinearLayout.VERTICAL);
-        side.setClipChildren(false);
-        TvUi.ArtView hero = new TvUi.ArtView(act, px(460), false, 24);
-        if (!d.children.isEmpty() || d.all.isEmpty()) hero.showIcon(0, R.drawable.ic_folder, true);
-        else TvArt.load(act, hero, idx.tracks.get(d.all.get(0)), R.drawable.ic_note);
-        side.addView(hero, new LinearLayout.LayoutParams(px(460), px(460)));
-        TextView title = TvUi.text(act, d.title, 46, TvUi.TEXT, true);
-        title.setSingleLine(false);
-        title.setMaxLines(2);
+        TextView chip = TvUi.text(act, d.kind, 26, REST, true);
+        hero.addView(chip, new LinearLayout.LayoutParams(-2, -2));
+
+        TvUi.ArtView art = new TvUi.ArtView(act, px(330), false, 12);
+        if (!d.children.isEmpty() || d.all.isEmpty()) art.showIcon(0, R.drawable.ic_folder, true);
+        else TvArt.load(act, art, idx.tracks.get(d.all.get(0)), R.drawable.ic_note);
+        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(px(330), px(330));
+        ap.topMargin = px(14);
+        hero.addView(art, ap);
+
+        TextView title = TvUi.text(act, d.title, 54, TvUi.TEXT, true);
+        title.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, -2);
-        tp.topMargin = px(26);
-        side.addView(title, tp);
-        String l1 = d.kind + (d.sub1 == null || d.sub1.isEmpty() ? "" : " • " + d.sub1);
-        side.addView(TvUi.text(act, l1, 25, TvUi.MUTED, false));
+        tp.topMargin = px(24);
+        hero.addView(title, tp);
+
         long ms = 0;
         for (int id : d.all) ms += idx.tracks.get(id).durationMs;
-        String l2 = TvUi.plural(d.all.size(), "song") + (ms > 0 ? " • " + TvUi.span(ms) : "");
-        LinearLayout.LayoutParams l2p = new LinearLayout.LayoutParams(-1, -2);
-        l2p.topMargin = px(4);
-        side.addView(TvUi.text(act, l2, 25, TvUi.MUTED, false), l2p);
+        StringBuilder meta = new StringBuilder(d.kind);
+        if (d.sub1 != null && !d.sub1.isEmpty()) meta.append(" • ").append(d.sub1);
+        meta.append(" • ").append(TvUi.plural(d.all.size(), "song"));
+        if (ms > 0) meta.append(" • ").append(TvUi.span(ms));
+        TextView m = TvUi.text(act, meta.toString(), 26, TvUi.MUTED, false);
+        m.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2);
+        mp.topMargin = px(8);
+        hero.addView(m, mp);
+
         if (!d.all.isEmpty()) {
+            final String path = d.treePath == null ? "" : d.treePath;
             LinearLayout btns = new LinearLayout(act);
             btns.setOrientation(LinearLayout.HORIZONTAL);
+            btns.setGravity(Gravity.CENTER);
             btns.setClipChildren(false);
-            final Detail dd = d;
-            btns.addView(pill("Play", true, new Runnable() {
+            btns.setClipToPadding(false);
+            ImageView shuffle = circle(R.drawable.ic_shuffle, false, new Runnable() {
                 @Override public void run() {
-                    playAll(dd.all, dd.scope, dd.treePath == null ? "" : dd.treePath);
+                    shuffleAll(d.all, d.scope, path);
                 }
-            }), new LinearLayout.LayoutParams(-2, px(76)));
-            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, px(76));
-            sp.leftMargin = px(16);
-            btns.addView(pill("Shuffle", false, new Runnable() {
+            });
+            ImageView play = circle(R.drawable.ic_play, true, new Runnable() {
                 @Override public void run() {
-                    shuffleAll(dd.all, dd.scope, dd.treePath == null ? "" : dd.treePath);
+                    playAll(d.all, d.scope, path);
                 }
-            }), sp);
+            });
+            ImageView queue = circle(R.drawable.ic_queue, false, new Runnable() {
+                @Override public void run() {
+                    for (int id : d.all) command("enqueue", "id", String.valueOf(id));
+                    toast("Added " + TvUi.plural(d.all.size(), "song") + " to the queue");
+                }
+            });
+            heroPlay = play;
+            LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(px(84), px(84));
+            sl.rightMargin = px(26);
+            LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(px(120), px(120));
+            LinearLayout.LayoutParams ql = new LinearLayout.LayoutParams(px(84), px(84));
+            ql.leftMargin = px(26);
+            btns.addView(shuffle, sl);
+            btns.addView(play, pl);
+            btns.addView(queue, ql);
             LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-2, -2);
-            bp.topMargin = px(28);
-            side.addView(btns, bp);
+            bp.topMargin = px(26);
+            hero.addView(btns, bp);
         }
-        box.addView(side, new LinearLayout.LayoutParams(px(460), -1));
+        return hero;
+    }
 
+    private void showDetail(Detail d, boolean restoreFocus) {
         ListView lv = newList();
+        lv.addHeaderView(heroView(d), null, false);
         List<RowItem> items = new ArrayList<>();
         for (LibraryIndex.Node n : d.children) {
             RowItem r = new RowItem();
@@ -738,13 +872,10 @@ final class TvBrowse {
         }
         boolean albumView = "album".equals(d.scope);
         for (int i = 0; i < d.ids.size(); i++) items.add(songItem(d.ids.get(i), i + 1, albumView));
-        final RowAdapter a = new RowAdapter(items, d.scope, d.treePath == null ? "" : d.treePath, 0);
+        final RowAdapter a = new RowAdapter(items, d.scope, d.treePath == null ? "" : d.treePath);
         a.detail = d;
         lv.setAdapter(a);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1f);
-        lp.leftMargin = px(60);
-        box.addView(lv, lp);
-        content.addView(box, new FrameLayout.LayoutParams(-1, -1));
+        content.addView(lv, new FrameLayout.LayoutParams(-1, -1));
         list = lv;
         adapter = a;
         if (restoreFocus) focusItem(d.focus, 1);
@@ -779,14 +910,12 @@ final class TvBrowse {
     private final class RowAdapter extends BaseAdapter {
         private final List<RowItem> items;
         private final String scope, path;
-        private final int leftPad;
         Detail detail;
 
-        RowAdapter(List<RowItem> items, String scope, String path, int leftPad) {
+        RowAdapter(List<RowItem> items, String scope, String path) {
             this.items = items;
             this.scope = scope;
             this.path = path;
-            this.leftPad = leftPad;
         }
 
         @Override public int getCount() {
@@ -802,7 +931,7 @@ final class TvBrowse {
         }
 
         @Override public View getView(int pos, View convert, ViewGroup parent) {
-            if (convert == null) convert = newRow(this);
+            if (convert == null) convert = newRow();
             RowHolder h = (RowHolder) convert.getTag();
             h.position = pos;
             bindRow(h, items.get(pos), scope, path, detail);
@@ -810,25 +939,26 @@ final class TvBrowse {
         }
     }
 
-    private View newRow(RowAdapter a) {
+    private View newRow() {
         FrameLayout wrap = new FrameLayout(act);
-        wrap.setPadding(a.leftPad, 0, a.leftPad > 0 ? px(96) : 0, px(6));
+        wrap.setPadding(px(90), 0, px(60), px(6));
         wrap.setClipChildren(false);
+        wrap.setClipToPadding(false);
         final RowHolder h = new RowHolder();
         h.inner = new LinearLayout(act);
         h.inner.setOrientation(LinearLayout.HORIZONTAL);
         h.inner.setGravity(Gravity.CENTER_VERTICAL);
         h.inner.setPadding(px(26), 0, px(30), 0);
         h.number = TvUi.text(act, "", 28, TvUi.MUTED, false);
-        h.number.setGravity(Gravity.END);
+        h.number.setGravity(Gravity.CENTER);
         h.inner.addView(h.number, new LinearLayout.LayoutParams(px(56), -2));
-        h.art = new TvUi.ArtView(act, px(76), false, 12);
+        h.art = new TvUi.ArtView(act, px(76), false, 10);
         LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(px(76), px(76));
         ap.leftMargin = px(4);
         h.inner.addView(h.art, ap);
         LinearLayout meta = new LinearLayout(act);
         meta.setOrientation(LinearLayout.VERTICAL);
-        h.title = TvUi.text(act, "", 32, TvUi.TEXT, true);
+        h.title = TvUi.text(act, "", 31, TvUi.TEXT, true);
         h.sub = TvUi.text(act, "", 23, TvUi.MUTED, false);
         meta.addView(h.title);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
@@ -845,9 +975,9 @@ final class TvBrowse {
         LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-2, -2);
         dp.leftMargin = px(24);
         h.inner.addView(h.dur, dp);
-        wrap.addView(h.inner, new FrameLayout.LayoutParams(-1, px(104)));
+        wrap.addView(h.inner, new FrameLayout.LayoutParams(-1, px(100)));
         wrap.setTag(h);
-        TvUi.focusable(h.inner, 1.015f, new TvUi.FocusChange() {
+        TvUi.focusable(h.inner, 1.01f, new TvUi.FocusChange() {
             @Override public void onFocus(boolean f) {
                 h.focused = f;
                 styleRow(h);
@@ -858,8 +988,6 @@ final class TvBrowse {
                 clickRow(h);
             }
         });
-        h.scope = a.scope;
-        h.path = a.path;
         return wrap;
     }
 
@@ -889,11 +1017,17 @@ final class TvBrowse {
 
     private void styleRow(RowHolder h) {
         boolean f = h.focused;
-        h.inner.setBackground(f ? TvUi.round(Color.WHITE, 18) : null);
-        h.title.setTextColor(h.current ? (f ? 0xFFD4153A : TvUi.ACCENT) : f ? TvUi.DARK_TEXT : TvUi.TEXT);
-        h.sub.setTextColor(f ? TvUi.DARK_MUTED : TvUi.MUTED);
-        h.dur.setTextColor(f ? TvUi.DARK_MUTED : TvUi.MUTED);
-        h.number.setTextColor(h.current ? TvUi.ACCENT : f ? TvUi.DARK_MUTED : TvUi.MUTED);
+        if (f) {
+            GradientDrawable d = TvUi.round(0x29FFFFFF, 14);
+            d.setStroke(px(4), Color.WHITE);
+            h.inner.setBackground(d);
+        } else {
+            h.inner.setBackground(null);
+        }
+        h.title.setTextColor(h.current ? TvUi.ACCENT : TvUi.TEXT);
+        h.sub.setTextColor(TvUi.MUTED);
+        h.dur.setTextColor(TvUi.MUTED);
+        h.number.setTextColor(h.current ? TvUi.ACCENT : TvUi.MUTED);
         h.eq.setVisibility(h.current ? View.VISIBLE : View.GONE);
         h.eq.setRunning(playing);
     }
@@ -901,11 +1035,10 @@ final class TvBrowse {
     private void clickRow(RowHolder h) {
         RowItem r = h.item;
         if (r == null) return;
+        if (h.detail != null) h.detail.focus = h.position;
         if (r.folder != null) {
-            if (h.detail != null) h.detail.focus = h.position;
             open(folderDetail(r.folder));
         } else {
-            if (h.detail != null) h.detail.focus = h.position;
             command("play", "id", String.valueOf(r.id), "scope", h.scope, "path", h.path);
         }
     }
@@ -914,24 +1047,37 @@ final class TvBrowse {
 
     private void focusFirst() {
         if (list == null) return;
-        focusItem(0, COLS);
+        if (heroPlay != null) focusHero();
+        else focusItem(0, COLS);
     }
 
-    private void focusFirstRow() {
-        if (list == null) return;
-        focusItem(0, 1);
+    /** On a folder / album / artist page the remote starts on the big Play button. */
+    private void focusHero() {
+        final ListView lv = list;
+        if (lv == null) return;
+        lv.setSelection(0);
+        final View target = heroPlay;
+        lv.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (lv != list) return;
+                if (target != null) target.requestFocus();
+                else focusItem(0, 1);
+            }
+        }, 80);
     }
 
     /** Puts the remote focus on item {@code index} (a card, or a row when cols is 1). */
     private void focusItem(final int index, final int cols) {
         final ListView lv = list;
         if (lv == null || !grab) return;
-        final int pos = index / cols + lv.getHeaderViewsCount();
-        lv.setSelection(pos);
+        int rowIdx = index / cols;
+        final int focusPos = lv.getHeaderViewsCount() + rowIdx;
+        // The first row scrolls to the very top so the heading (or the hero) stays in view.
+        lv.setSelection(rowIdx == 0 ? 0 : focusPos);
         lv.postDelayed(new Runnable() {
             @Override public void run() {
                 if (lv != list) return;
-                View row = lv.getChildAt(pos - lv.getFirstVisiblePosition());
+                View row = lv.getChildAt(focusPos - lv.getFirstVisiblePosition());
                 if (row == null) return;
                 View target = row;
                 if (cols > 1 && row instanceof ViewGroup) {
@@ -942,7 +1088,7 @@ final class TvBrowse {
                 }
                 target.requestFocus();
             }
-        }, 60);
+        }, 80);
     }
 
     // ---- QR -------------------------------------------------------------------------------
