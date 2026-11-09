@@ -1193,7 +1193,9 @@ final class TvBrowse {
 
     private void showGrid(List<Card> cards, String title, boolean circle, int focus) {
         ListView lv = newList();
-        lv.addHeaderView(heading(title), null, false);
+        // Headers are "selectable" on purpose: setSelection(0) skips a non-selectable header and
+        // scrolls the first row to the top instead, which hides the heading or the hero.
+        lv.addHeaderView(heading(title), null, true);
         final CardAdapter a = new CardAdapter(cards, circle);
         lv.setAdapter(a);
         content.addView(lv, new FrameLayout.LayoutParams(-1, -1));
@@ -1361,7 +1363,7 @@ final class TvBrowse {
             }
         }), sp);
         head.addView(btns);
-        lv.addHeaderView(head, null, false);
+        lv.addHeaderView(head, null, true);
         List<RowItem> items = new ArrayList<>();
         for (int id : all) items.add(songItem(id, 0, false));
         final RowAdapter a = new RowAdapter(items, "all", "");
@@ -1449,7 +1451,7 @@ final class TvBrowse {
 
     private void showDetail(Detail d, boolean restoreFocus) {
         ListView lv = newList();
-        lv.addHeaderView(heroView(d), null, false);
+        lv.addHeaderView(heroView(d), null, true);
         List<RowItem> items = new ArrayList<>();
         for (LibraryIndex.Node n : d.children) {
             RowItem r = new RowItem();
@@ -1705,8 +1707,16 @@ final class TvBrowse {
         lv.postDelayed(new Runnable() {
             @Override public void run() {
                 if (lv != list) return;
-                if (target != null) target.requestFocus();
-                else focusItem(0, 1);
+                if (target == null) {
+                    focusItem(0, 1);
+                } else if (!target.requestFocus()) {
+                    // The header was still being scrolled into place; try once more.
+                    lv.postDelayed(new Runnable() {
+                        @Override public void run() {
+                            if (lv == list) target.requestFocus();
+                        }
+                    }, 150);
+                }
             }
         }, 80);
     }
