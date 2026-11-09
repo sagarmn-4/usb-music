@@ -33,8 +33,48 @@ final class TvUi {
 
     private TvUi() {}
 
+    // ---- fonts: four open-source variable fonts bundled in assets/fonts (SIL Open Font License) ----
+    static final String[] FONT_NAMES = {"Inter", "Arimo", "Noto Sans", "DM Sans"};
+    static final String[] FONT_FILES = {"fonts/Inter.ttf", "fonts/Arimo.ttf", "fonts/NotoSans.ttf", "fonts/DMSans.ttf"};
+    static final int FONT_DEFAULT = 1;
+    private static Typeface regularFace, boldFace;
+    private static int loadedFont = -1;
+
+    static int fontIndex(Context c) {
+        int i = c.getSharedPreferences("usbmusic_ui", Context.MODE_PRIVATE).getInt("font", FONT_DEFAULT);
+        return i >= 0 && i < FONT_FILES.length ? i : FONT_DEFAULT;
+    }
+
+    static void setFontIndex(Context c, int i) {
+        c.getSharedPreferences("usbmusic_ui", Context.MODE_PRIVATE).edit().putInt("font", i).apply();
+    }
+
+    /** One weight of a bundled font (400 regular, 600 for emphasis); falls back to the system font. */
+    static Typeface face(Context c, int index, int weight) {
+        try {
+            Typeface t = new Typeface.Builder(c.getAssets(), FONT_FILES[index])
+                    .setFontVariationSettings("'wght' " + weight).setWeight(weight).build();
+            if (t != null) return t;
+        } catch (Exception ignored) {
+        }
+        return Typeface.create("sans-serif", Typeface.NORMAL);
+    }
+
+    static void loadFont(Context c) {
+        int i = fontIndex(c);
+        if (i == loadedFont && regularFace != null) return;
+        regularFace = face(c, i, 400);
+        boldFace = face(c, i, 600);
+        loadedFont = i;
+    }
+
+    static Typeface regular() {
+        return regularFace;
+    }
+
     static void init(Context c) {
         unit = c.getResources().getDisplayMetrics().widthPixels / 1920f;
+        loadFont(c);
     }
 
     static int px(float design) {
@@ -49,7 +89,7 @@ final class TvUi {
         t.setSingleLine(true);
         t.setEllipsize(android.text.TextUtils.TruncateAt.END);
         t.setIncludeFontPadding(false);
-        if (bold) t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        t.setTypeface(bold ? boldFace : regularFace);
         return t;
     }
 

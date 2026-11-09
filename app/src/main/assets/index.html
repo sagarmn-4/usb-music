@@ -10,10 +10,14 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <style>
 @property --pc{syntax:'<color>';inherits:true;initial-value:#1f1f1f}
-:root{--bg:#030303;--card:#212121;--line:#2b2b2b;--text:#fff;--muted:#aaa;--accent:#ff2a4d;--gray:#4a4a4a}
+@font-face{font-family:"USB Inter";src:url(/fonts/Inter.ttf) format("truetype");font-weight:100 900;font-display:swap}
+@font-face{font-family:"USB Arimo";src:url(/fonts/Arimo.ttf) format("truetype");font-weight:100 900;font-display:swap}
+@font-face{font-family:"USB Noto Sans";src:url(/fonts/NotoSans.ttf) format("truetype");font-weight:100 900;font-display:swap}
+@font-face{font-family:"USB DM Sans";src:url(/fonts/DMSans.ttf) format("truetype");font-weight:100 900;font-display:swap}
+:root{--bg:#030303;--card:#212121;--line:#2b2b2b;--text:#fff;--muted:#aaa;--accent:#ff2a4d;--gray:#4a4a4a;--font:"USB Arimo",Arial,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-html,body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.4 Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+html,body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.4 var(--font);-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 .ic{width:24px;height:24px;fill:currentColor;flex:none}
 .wrap{max-width:720px;margin:0 auto}
@@ -134,7 +138,18 @@ body.playing .bars span{animation-play-state:running}
 .rmore:active{background:rgba(255,255,255,.12)}
 .row{cursor:pointer}
 #player .tr{display:flex}
-#queuesheet{z-index:100}
+#queuesheet,#settingssheet{z-index:100}
+#settingssheet .qhead{position:sticky;top:0;z-index:3;background:var(--bg);display:flex;align-items:center;gap:6px;padding:max(8px,env(safe-area-inset-top)) 12px 8px 4px;border-bottom:1px solid var(--line)}
+#settingssheet h2{margin:0;flex:1;font-size:20px;font-weight:700;letter-spacing:-.3px}
+.ssec{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:20px 18px 8px;font-weight:600}
+.fopt{display:flex;align-items:center;gap:16px;margin:0 12px 8px;padding:14px 16px;border-radius:14px;background:#161616;border:1px solid transparent;width:calc(100% - 24px);text-align:left;color:var(--text)}
+.fopt.on{border-color:#555;background:#1d1d1d}
+.fopt .radio{width:22px;height:22px;border-radius:50%;border:2px solid #777;flex:none;position:relative}
+.fopt.on .radio{border-color:#fff}.fopt.on .radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--accent)}
+.fopt .fn{font-size:17px;font-weight:600;display:flex;align-items:center;gap:10px}
+.fopt .tag{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:9px;background:#333;color:#ddd}
+.fopt .fs{font-size:14px;color:#c8c8c8;margin-top:4px}
+.snote{font-size:13px;color:var(--muted);margin:10px 18px;line-height:1.45}
 #queuesheet .qhead{position:sticky;top:0;z-index:3;background:var(--bg);display:flex;align-items:center;gap:6px;padding:max(8px,env(safe-area-inset-top)) 12px 8px 4px;border-bottom:1px solid var(--line)}
 #queuesheet h2{margin:0;flex:1;font-size:20px;font-weight:700;letter-spacing:-.3px}
 #queuesheet .clr{font-size:14px;font-weight:500;color:var(--muted);padding:8px}
@@ -213,6 +228,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <symbol id="i-vol" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .2.3.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></symbol>
   <symbol id="i-log" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></symbol>
   <symbol id="i-volmute" viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></symbol>
@@ -313,7 +329,20 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <div id="menu" hidden>
   <button id="mRescan"><svg class="ic"><use href="#i-refresh"/></svg>Rescan USB</button>
   <button id="mLog"><svg class="ic"><use href="#i-log"/></svg>Scan log</button>
+  <button id="mSettings"><svg class="ic"><use href="#i-gear"/></svg>Settings</button>
 </div>
+
+<section id="settingssheet" class="sheet" aria-label="Settings">
+  <div class="wrap">
+    <div class="qhead">
+      <button class="round" id="setBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+      <h2>Settings</h2>
+    </div>
+    <div class="ssec">Font</div>
+    <div id="fontopts"></div>
+    <div class="snote">Changes the font on this page. The TV screen has its own font setting.</div>
+  </div>
+</section>
 
 <section id="queuesheet" class="sheet" aria-label="Up next">
   <div class="wrap">
@@ -1025,6 +1054,39 @@ function openQueue() {
   loadQueue();
 }
 $('#pqueue').onclick = openQueue;
+
+/* ---------- settings: font (four free fonts, Arimo by default; kept in this browser) ---------- */
+const FONT_OPTS = [
+  {n: 'Inter', st: '"USB Inter",system-ui,sans-serif'},
+  {n: 'Arimo', st: '"USB Arimo",Arial,sans-serif', def: true},
+  {n: 'Noto Sans', st: '"USB Noto Sans",system-ui,sans-serif'},
+  {n: 'DM Sans', st: '"USB DM Sans",system-ui,sans-serif'},
+];
+let fontNow = 1;
+try { const v = localStorage.getItem('usbmusic.font'); if (v !== null && FONT_OPTS[+v]) fontNow = +v; } catch (e) { /* storage blocked: keep the default */ }
+function applyFont() { document.documentElement.style.setProperty('--font', FONT_OPTS[fontNow].st); }
+function drawFontOpts() {
+  $('#fontopts').innerHTML = FONT_OPTS.map((f, i) =>
+    '<button class="fopt' + (i === fontNow ? ' on' : '') + '" data-i="' + i + '"><span class="radio"></span><span><div class="fn">' + f.n +
+    (f.def ? '<span class="tag">Default</span>' : '') + '</div><div class="fs" style="font-family:' + f.st.replace(/"/g, "'") +
+    '">Aa &nbsp;Evening Ragas \u00b7 Asha Rao</div></span></button>').join('');
+}
+$('#fontopts').onclick = e => {
+  const o = e.target.closest('.fopt');
+  if (!o) return;
+  fontNow = +o.dataset.i;
+  try { localStorage.setItem('usbmusic.font', fontNow); } catch (x) { /* ignore */ }
+  applyFont();
+  drawFontOpts();
+};
+$('#mSettings').onclick = () => {
+  closeMenu();
+  drawFontOpts();
+  const el = $('#settingssheet');
+  if (!el.classList.contains('open')) { el.classList.add('open'); pushLayer('settings'); }
+};
+$('#setBack').onclick = () => history.back();
+applyFont();
 $('#qBack').onclick = () => history.back();
 $('#qClear').onclick = () => api('qclear').then(renderQueue);
 
@@ -1166,6 +1228,7 @@ window.addEventListener('popstate', () => {
     }
   }
   else if (top === 'queue') $('#queuesheet').classList.remove('open');
+  else if (top === 'settings') $('#settingssheet').classList.remove('open');
   else if (top === 'search') { $('#searchsheet').classList.remove('open'); sq = ''; $('#sq').value = ''; sTab = 'all'; setSearchTab('all'); }
   else if (top === 'detail') {
     detailStack.pop();

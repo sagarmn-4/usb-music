@@ -12,6 +12,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.ColorDrawable;
@@ -57,6 +59,13 @@ final class TvBrowse {
             R.drawable.ic_album, R.drawable.ic_album, R.drawable.ic_note, R.drawable.ic_person};
     private static final int REST = 0xFFE6E6EA;
     private static final int SEARCH_TAB = 4;
+    private static final int SETTINGS_TAB = 5;
+    /** After a font change the screen is rebuilt; this brings it back to the Settings page. */
+    private static int restoreTab = -1;
+    private LinearLayout settingsItem;
+    private ImageView settingsIcon;
+    private TextView settingsLabel;
+    private View settingsSelected;
 
     private LinearLayout searchItem;
     private ImageView searchIcon;
@@ -142,6 +151,10 @@ final class TvBrowse {
     TvBrowse(Activity activity) {
         act = activity;
         TvUi.init(activity);
+        if (restoreTab >= 0) {
+            tab = restoreTab;
+            restoreTab = -1;
+        }
         root = new FrameLayout(activity);
         root.setBackgroundColor(TvUi.BG);
 
@@ -251,6 +264,42 @@ final class TvBrowse {
         sepp.bottomMargin = px(14);
         rail.addView(rescanSep, sepp);
 
+        settingsItem = railItem(R.drawable.ic_settings, "Settings");
+        settingsIcon = (ImageView) settingsItem.getChildAt(0);
+        settingsLabel = (TextView) settingsItem.getChildAt(1);
+        settingsIcon.getLayoutParams().width = px(28);
+        settingsIcon.getLayoutParams().height = px(28);
+        settingsLabel.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px(24));
+        settingsLabel.setTypeface(TvUi.regular());
+        ((LinearLayout.LayoutParams) settingsLabel.getLayoutParams()).leftMargin = px(20);
+        TvUi.focusable(settingsItem, 1f, new TvUi.FocusChange() {
+            @Override public void onFocus(boolean f) {
+                styleRail();
+                if (pendingTab != null) handler.removeCallbacks(pendingTab);
+                if (f && (tab != SETTINGS_TAB || !stack.isEmpty())) {
+                    pendingTab = new Runnable() {
+                        @Override public void run() {
+                            selectTab(SETTINGS_TAB, false);
+                        }
+                    };
+                    handler.postDelayed(pendingTab, 320);
+                }
+            }
+        });
+        settingsItem.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                selectTab(SETTINGS_TAB, true);
+            }
+        });
+        TvUi.pressToActivate(settingsItem, new Runnable() {
+            @Override public void run() {
+                selectTab(SETTINGS_TAB, true);
+            }
+        });
+        LinearLayout.LayoutParams setp = new LinearLayout.LayoutParams(-1, px(62));
+        setp.bottomMargin = px(4);
+        rail.addView(settingsItem, setp);
+
         rescanItem = railItem(R.drawable.ic_refresh, "Rescan USB");
         rescanIcon = (ImageView) rescanItem.getChildAt(0);
         rescanLabel = (TextView) rescanItem.getChildAt(1);
@@ -258,7 +307,7 @@ final class TvBrowse {
         rescanIcon.getLayoutParams().width = px(28);
         rescanIcon.getLayoutParams().height = px(28);
         rescanLabel.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px(24));
-        rescanLabel.setTypeface(null, android.graphics.Typeface.NORMAL);
+        rescanLabel.setTypeface(TvUi.regular());
         ((LinearLayout.LayoutParams) rescanLabel.getLayoutParams()).leftMargin = px(20);
         TvUi.focusable(rescanItem, 1f, new TvUi.FocusChange() {
             @Override public void onFocus(boolean f) {
@@ -487,7 +536,9 @@ final class TvBrowse {
             handler.postDelayed(new Runnable() {
                 @Override public void run() {
                     View f = root.findFocus();
-                    if (f == null || isInside(f, rail)) railItems[tab].requestFocus();
+                    if (f != null && !isInside(f, rail)) return;
+                    if (tab == SETTINGS_TAB) settingsItem.requestFocus();
+                    else if (tab < railItems.length && railItems[tab] != null) railItems[tab].requestFocus();
                 }
             }, 100);
         }
@@ -650,6 +701,10 @@ final class TvBrowse {
             }
             // Up and Down inside a list must never jump into the left rail: that would switch the
             // tab (and lose the open folder). The rail is only reached with Left.
+            View n = f.focusSearch(up ? View.FOCUS_UP : View.FOCUS_DOWN);
+            if (n != null && isInside(n, rail)) return true;
+        }
+        if (tab == SETTINGS_TAB && !player.isOpen() && isInside(f, content)) {
             View n = f.focusSearch(up ? View.FOCUS_UP : View.FOCUS_DOWN);
             if (n != null && isInside(n, rail)) return true;
         }
@@ -822,15 +877,21 @@ final class TvBrowse {
             styleRailItem(railItems[i], railIcons[i], railLabels[i], i == tab);
         }
         styleRescan();
+        styleQuiet(settingsItem, settingsIcon, settingsLabel, tab == SETTINGS_TAB);
         styleRailItem(searchItem, searchIcon, searchLabel, tab == SEARCH_TAB);
     }
 
     private void styleRescan() {
-        boolean f = rescanItem.hasFocus();
-        rescanItem.setBackground(f ? TvUi.round(0x24FFFFFF, 31) : null);
-        int c = f ? Color.WHITE : 0xFF8E8E94;
-        rescanLabel.setTextColor(c);
-        rescanIcon.setColorFilter(c, PorterDuff.Mode.SRC_IN);
+        styleQuiet(rescanItem, rescanIcon, rescanLabel, false);
+    }
+
+    /** Settings and Rescan are rarely used: small, grey, and only softly highlighted. */
+    private void styleQuiet(LinearLayout item, ImageView icon, TextView label, boolean on) {
+        boolean f = item.hasFocus();
+        item.setBackground(f ? TvUi.round(0x24FFFFFF, 31) : on ? TvUi.round(0x1AFFFFFF, 31) : null);
+        int c = f || on ? Color.WHITE : 0xFF8E8E94;
+        label.setTextColor(c);
+        icon.setColorFilter(c, PorterDuff.Mode.SRC_IN);
     }
 
     /** Rescanning reads the whole drive and takes a while, so ask first (Cancel has the focus). */
@@ -983,6 +1044,11 @@ final class TvBrowse {
         adapter = null;
         heroPlay = null;
         MusicService s = MusicService.get();
+        if (tab == SETTINGS_TAB && stack.isEmpty()) {
+            message.setVisibility(View.GONE);
+            showSettings();
+            return;
+        }
         if (idx.tracks.isEmpty()) {
             message.setVisibility(View.VISIBLE);
             if (s != null) updateMessage(s);
@@ -1006,6 +1072,9 @@ final class TvBrowse {
                 break;
             case SEARCH_TAB:
                 showSearch(restoreFocus ? searchFocus : 0);
+                break;
+            case SETTINGS_TAB:
+                showSettings();
                 break;
             default:
                 showGrid(artistCards(), "Artists", true, focus);
@@ -1164,6 +1233,7 @@ final class TvBrowse {
 
         final EditText field = new EditText(act);
         field.setSingleLine(true);
+        field.setTypeface(TvUi.regular());
         field.setHint("Search songs, albums");
         field.setHintTextColor(0xFF8A8A90);
         // The magnifier inside the field, like on the search bar of the design.
@@ -1351,6 +1421,122 @@ final class TvBrowse {
         lv.setCacheColorHint(Color.TRANSPARENT);
         lv.setPadding(0, px(14), 0, px(60));
         return lv;
+    }
+
+    // ---- Settings page: the font ---------------------------------------------------------------
+
+    private static final class Radio extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final boolean on;
+
+        Radio(Context c, boolean on) {
+            super(c);
+            this.on = on;
+        }
+
+        @Override protected void onDraw(Canvas c) {
+            float cx = getWidth() / 2f, cy = getHeight() / 2f, r = getWidth() / 2f - px(3);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(px(4));
+            p.setColor(on ? Color.WHITE : 0xFF8A8A90);
+            c.drawCircle(cx, cy, r, p);
+            if (on) {
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(TvUi.ACCENT);
+                c.drawCircle(cx, cy, r - px(8), p);
+            }
+        }
+    }
+
+    private void showSettings() {
+        LinearLayout col = new LinearLayout(act);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setClipChildren(false);
+        col.setClipToPadding(false);
+        col.setPadding(0, px(14), px(96), 0);
+        col.addView(heading("Settings"));
+        TextView sec = TvUi.text(act, "FONT", 24, TvUi.MUTED, true);
+        sec.setLetterSpacing(0.12f);
+        sec.setPadding(px(118), 0, 0, px(18));
+        col.addView(sec, new LinearLayout.LayoutParams(-2, -2));
+        int current = TvUi.fontIndex(act);
+        settingsSelected = null;
+        for (int i = 0; i < TvUi.FONT_NAMES.length; i++) {
+            View row = fontRow(i, i == current);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(1200), px(124));
+            lp.leftMargin = px(104);
+            lp.bottomMargin = px(12);
+            col.addView(row, lp);
+            if (i == current) settingsSelected = row;
+        }
+        TextView note = TvUi.text(act, "Changes the font on the TV. The web player on your phone has its own font setting.",
+                24, TvUi.MUTED, false);
+        note.setPadding(px(118), px(14), 0, 0);
+        col.addView(note, new LinearLayout.LayoutParams(-2, -2));
+        content.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        final View first = settingsSelected;
+        if (grab && first != null) {
+            first.postDelayed(new Runnable() {
+                @Override public void run() {
+                    if (tab == SETTINGS_TAB) first.requestFocus();
+                }
+            }, 200);
+        }
+    }
+
+    private View fontRow(final int index, boolean selected) {
+        LinearLayout row = new LinearLayout(act);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(px(40), 0, px(40), 0);
+        final GradientDrawable bg = TvUi.round(0x0DFFFFFF, 22);
+        row.setBackground(bg);
+        row.addView(new Radio(act, selected), new LinearLayout.LayoutParams(px(44), px(44)));
+        LinearLayout txt = new LinearLayout(act);
+        txt.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout nameRow = new LinearLayout(act);
+        nameRow.setOrientation(LinearLayout.HORIZONTAL);
+        nameRow.setGravity(Gravity.CENTER_VERTICAL);
+        nameRow.addView(TvUi.text(act, TvUi.FONT_NAMES[index], 36, TvUi.TEXT, true));
+        if (index == TvUi.FONT_DEFAULT) {
+            TextView tag = TvUi.text(act, "DEFAULT", 20, 0xFFE0E0E4, true);
+            tag.setLetterSpacing(0.08f);
+            tag.setBackground(TvUi.round(0x24FFFFFF, 14));
+            tag.setPadding(px(14), px(4), px(14), px(4));
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
+            tp.leftMargin = px(18);
+            nameRow.addView(tag, tp);
+        }
+        txt.addView(nameRow);
+        TextView sample = TvUi.text(act, "Aa  Evening Ragas \u00b7 Morning Light \u00b7 Asha Rao", 30, 0xFFCFCFD4, false);
+        sample.setTypeface(TvUi.face(act, index, 400));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, -2);
+        sp.topMargin = px(8);
+        txt.addView(sample, sp);
+        LinearLayout.LayoutParams txp = new LinearLayout.LayoutParams(0, -2, 1f);
+        txp.leftMargin = px(34);
+        row.addView(txt, txp);
+        TvUi.focusable(row, 1.012f, new TvUi.FocusChange() {
+            @Override public void onFocus(boolean f) {
+                bg.setColor(f ? 0x2EFFFFFF : 0x0DFFFFFF);
+                bg.setStroke(f ? px(4) : 0, Color.WHITE);
+            }
+        });
+        final Runnable choose = new Runnable() {
+            @Override public void run() {
+                if (index == TvUi.fontIndex(act)) return;
+                TvUi.setFontIndex(act, index);
+                restoreTab = SETTINGS_TAB;
+                act.recreate(); // every view is built with the font, so rebuild the screen
+            }
+        };
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                choose.run();
+            }
+        });
+        TvUi.pressToActivate(row, choose);
+        return row;
     }
 
     // ---- Folders page: Folder view (cover grid) or List view ---------------------------------
@@ -1992,6 +2178,10 @@ final class TvBrowse {
     // ---- focus helpers --------------------------------------------------------------------
 
     private void focusFirst() {
+        if (tab == SETTINGS_TAB) {
+            if (settingsSelected != null) settingsSelected.requestFocus();
+            return;
+        }
         if (tab == SEARCH_TAB && searchField != null) {
             searchField.requestFocus();
             showKeyboard(searchField);

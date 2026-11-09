@@ -3,14 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Arimo:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
 <title>USB Music TV preview</title>
 <style>
 @property --h{syntax:'<number>';inherits:true;initial-value:350}
 :root{--bg:#030303;--card:#212121;--text:#fff;--muted:#aaa;--accent:#ff2a4d;--h:350}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#000;overflow:hidden;font-family:Roboto,"Segoe UI",system-ui,sans-serif;color:var(--text)}
+:root{--font:Arimo,Arial,sans-serif}
+html,body{height:100%;background:#000;overflow:hidden;font-family:var(--font);color:var(--text)}
+button,input{font-family:inherit}
 #wrap{position:fixed;inset:0 0 34px 0;display:flex;align-items:center;justify-content:center}
 #stage{width:1920px;height:1080px;position:relative;overflow:hidden;background:var(--bg);flex:none;transform-origin:center;transition:--h 900ms ease}
+#fonts{position:fixed;left:0;right:0;bottom:34px;height:34px;background:#18181b;border-top:1px solid #2a2a2e;color:#9a9aa0;font-size:13px;display:flex;gap:6px;align-items:center;justify-content:center;white-space:nowrap}
+#fonts b{color:#fff;margin-right:6px}
+.fo{cursor:pointer;padding:5px 12px;border-radius:14px;background:#26262a;color:#cfcfd4}
+.fo i{font-style:normal;color:#ff7d93;font-weight:700;margin-right:6px}
+.fo.on{background:#fff;color:#000}.fo.on i{color:#d4153a}
 #legend{position:fixed;left:0;right:0;bottom:0;height:34px;background:#111;color:#9a9aa0;font-size:13px;display:flex;gap:20px;align-items:center;justify-content:center;white-space:nowrap}
 #legend b{color:#fff;font-weight:600}
 .legend-btn{cursor:pointer;color:#ff7d93}
@@ -28,6 +37,7 @@ html,body{height:100%;background:#000;overflow:hidden;font-family:Roboto,"Segoe 
 .ri.focus{background:#fff;color:#000;transform:scale(1.04);box-shadow:0 10px 34px rgba(0,0,0,.5)}
 .ri.sub{height:62px;font-size:24px;font-weight:400;color:#8e8e94;gap:20px;padding:0 30px}
 .ri.sub svg{width:28px;height:28px}
+.ri.sub.on{background:rgba(255,255,255,.1);color:#fff}
 .ri.sub.focus{background:rgba(255,255,255,.14);color:#fff;transform:none;box-shadow:none}
 .sep{height:2px;background:#3a3a40;margin:12px 16px 14px;border-radius:1px}
 .rfill{flex:1}
@@ -217,6 +227,16 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 #splash.on{opacity:1;visibility:visible;transition:opacity .6s}
 .sbox{display:flex;flex-direction:column;align-items:center;text-align:center}
 .sbox h1{font-size:96px;margin:30px 0 40px;letter-spacing:-2px}
+.sec{font-size:24px;letter-spacing:3px;text-transform:uppercase;color:#9a9aa0;margin:0 0 20px 14px;font-weight:600}
+.fopts{display:flex;flex-direction:column;gap:12px;max-width:1280px}
+.frow{display:flex;align-items:center;gap:34px;padding:0 40px;height:136px;border-radius:22px;background:rgba(255,255,255,.05);transition:transform .16s ease-out,background .16s,box-shadow .16s}
+.frow.focus{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 4px #fff;transform:scale(1.012)}
+.radio{width:44px;height:44px;border-radius:50%;border:4px solid #8a8a90;flex:none;position:relative}
+.radio.on{border-color:#fff}.radio.on::after{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--accent)}
+.fn{font-size:36px;font-weight:600;display:flex;align-items:center;gap:18px}
+.tag{font-size:20px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 14px;border-radius:14px;background:rgba(255,255,255,.14);color:#e0e0e4}
+.fs{font-size:30px;color:#cfcfd4;margin-top:8px}
+.fnote{font-size:24px;color:var(--muted);margin:26px 0 0 14px}
 </style>
 </head>
 <body>
@@ -257,6 +277,7 @@ const ICON={
  personc:'<svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V21h16v-2.5c0-3-5-4.5-8-4.5z"/></svg>',
  refresh:'<svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg>',
  info:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg>',
+ gear:'<svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .2.3.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>',
  del:'<svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>',
  gof:'<svg viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8zM12 18v-4.2l-1.6 1.6L9 14l4-4 4 4-1.4 1.4-1.6-1.6V18z" fill-rule="evenodd"/></svg>',
  gridv:'<svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>',
@@ -303,7 +324,7 @@ function move(d){const a=cands();if(!focusEl||!a.includes(focusEl)){setFocus(a[0
  if(best)setFocus(best);else bump(d)}
 function bump(d){const e=focusEl;if(!e)return;const m={r:'8px 0',l:'-8px 0',d:'0 8px',u:'0 -8px'}[d];e.animate([{translate:'0 0'},{translate:m},{translate:'0 0'}],{duration:220,easing:'ease-out'})}
 /* ---------- rendering ---------- */
-function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>[t,i]).filter(([t,i])=>i===0||i===2).map(([t,i])=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="sep"></div><div class="ri sub f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div><div class="cred"><span>Crafted by</span><b>Sagar Nanivadekar</b></div>`;qrDraw()}
+function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>[t,i]).filter(([t,i])=>i===0||i===2).map(([t,i])=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="sep"></div><div class="ri sub f ${S.tab===5?'on':''}" data-f data-a="tab:5">${ICON.gear}Settings</div><div class="ri sub f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div><div class="cred"><span>Crafted by</span><b>Sagar Nanivadekar</b></div>`;qrDraw()}
 function songRow(t,i,mode){const cur=S.cur===t;const lead=mode==='n'?`<div class="n">${i+1}</div>`:`<div class="th">${art(t)}</div>`;
  return `<div class="row f ${cur?'cur':''}" data-f data-menu data-a="song:${t.id}:${mode==='n'?'f':'all'}">${lead}<div class="mt"><div class="t">${t.title}</div><div class="s">${t.artist}${mode==='n'?'':' · '+t.folder}</div></div>${cur?'<span class="eq"><i></i><i></i><i></i></span>':''}<div class="d">${fmt(t.dur)}</div></div>`}
 function renderView(keep){const v=$('#view');let h='';const f=S.path&&S.path[S.path.length-1];
@@ -315,6 +336,7 @@ function renderView(keep){const v=$('#view');let h='';const f=S.path&&S.path[S.p
  else if(S.tab===0){const seg=`<div class="seg"><div class="sg f ${S.fview==='grid'?'on':''}" data-f data-label="Folder view" data-a="fv:grid">${ICON.gridv}</div><div class="sg f ${S.fview==='list'?'on':''}" data-f data-label="List view" data-a="fv:list">${ICON.listv}</div></div>`;
   h=`<div class="ph"><h1>Folders</h1>${seg}</div>`+(S.fview==='grid'?`<div class="grid">${FOLD.map((x,i)=>`<div class="card f" data-f data-a="fold:${i}">${x.art?art(x):folderTile()}<div class="t">${x.n}</div><div class="s">${x.cnt}</div></div>`).join('')}</div>`
    :`<div class="list">${FOLD.map((x,i)=>`<div class="row f" data-f data-a="fold:${i}"><div class="th">${x.art?art(x):folderTile()}</div><div class="mt"><div class="t">${x.n}</div><div class="s">${x.cnt}${x.subs?'':' • '+mins(x.songs)}</div></div><div class="chev">›</div></div>`).join('')}</div>`)}
+ else if(S.tab===5){h=settingsHtml()}
  else if(S.tab===1){const al=FOLD.filter(x=>x.art);h=`<h1>Albums</h1><div class="grid">${al.map(x=>`<div class="card f" data-f data-a="fold:${FOLD.indexOf(x)}">${art(x)}<div class="t">${x.n}</div><div class="s">${x.songs[0].artist} · ${x.cnt}</div></div>`).join('')}</div>`}
  else if(S.tab===2){h=`<h1>Songs</h1><div class="pills"><div class="pill pri f" data-f data-a="playall">Play all</div><div class="pill f" data-f data-a="shuffleall">Shuffle</div></div><div class="list">${TR.map((t,i)=>songRow(t,i,'t')).join('')}</div>`}
  else{h=`<h1>Artists</h1><div class="grid">${ARTISTS.map((a,i)=>`<div class="card round f" data-f data-a="artist:${i}"><div class="art" style="background:linear-gradient(145deg,hsl(${i*55} 55% 45%),hsl(${i*55+40} 55% 20%))">${ICON.person}</div><div class="t" style="text-align:center">${a}</div><div class="s" style="text-align:center">${TR.filter(t=>t.artist===a).length} songs</div></div>`).join('')}</div>`}
@@ -390,6 +412,7 @@ function activate(el,quiet){if(!el)return;const a=el.getAttribute('data-a')||'',
  case'search':openSearch();break;
  case'np':openNP(true);break;
  case'queue':if(npOpen()){const np=$('#np');if(np.classList.contains('q'))closeQ();else{np.classList.add('q');setFocus(np.querySelector('#qlist [data-f]'),true)}}else openNP(true,true);break;
+ case'font':{setFont(+p[1]);setFocus(document.querySelector(`#view [data-a="font:${p[1]}"]`),true);toast('Font: '+FOPTS[+p[1]].n);break}
  case'fv':{S.fview=p[1];renderView();setFocus(document.querySelector('#view .sg.on'),true);break}
  case'gotofolder':{const t=S.cur,f=t.fo;if(npOpen())openNP(false);S.tab=0;S.path=FOLD.includes(f)?[f]:[FOLD.find(x=>x.subs&&x.subs.includes(f)),f];renderRail();renderView();setFocus($('#view .row.cur')||$('#view .cbtn.big'),true);toast('Folder of the playing song: '+f.n);break}
  case'gotoparent':{if(S.path&&S.path.length>1){const from=S.path.pop().n;renderView();toast('Parent folder of '+from+': '+S.path[S.path.length-1].n)}else if(S.path){const from=S.path[0].n;S.path=null;S.tab=0;renderRail();renderView();toast('Parent of '+from+': all folders')}break}
@@ -420,6 +443,15 @@ function openConfirm(on){const c=$('#confirm');
  else{c.classList.remove('open');const r=document.querySelector('#rail [data-a="rescan"]');if(r)setFocus(r,true)}}
 function openAbout(on){const a=$('#about');if(on){a.innerHTML=`<div class="abox"><div class="logo big"><i></i></div><h2>USB Music</h2><div class="ver">Version 1.1</div><div class="who"><span>Developer</span><b>Sagar Nanivadekar</b></div><div class="note">Plays the music on your USB drive through the TV.<br>Control it from the remote or from your phone at 192.168.1.6:8080.</div><div class="pill pri f" data-f data-a="aboutclose">Close</div></div>`;a.classList.add('open');setFocus(a.querySelector('[data-f]'),true)}else{a.classList.remove('open');const r=document.querySelector('#rail [data-a="about"]');if(r)setFocus(r,true)}}
 function splash(){const e=$('#splash');e.innerHTML=`<div class="sbox"><div class="logo big"><i></i></div><h1>USB Music</h1><div class="who"><span>Crafted by</span><b>Sagar Nanivadekar</b></div></div>`;e.classList.add('on');clearTimeout(splashT);splashT=setTimeout(()=>e.classList.remove('on'),3200)}
+/* ---------- font setting (Settings page): four free fonts, Arimo by default ---------- */
+const FOPTS=[
+ {n:'Inter',st:'Inter,system-ui,sans-serif'},
+ {n:'Arimo',st:'Arimo,Arial,sans-serif',def:1},
+ {n:'Noto Sans',st:'"Noto Sans",system-ui,sans-serif'},
+ {n:'DM Sans',st:'"DM Sans",system-ui,sans-serif'}];
+let fontNow=1;
+function setFont(i){fontNow=i;document.documentElement.style.setProperty('--font',FOPTS[i].st);if(S.tab===5)renderView(true)}
+function settingsHtml(){return `<h1>Settings</h1><div class="sec">Font</div><div class="fopts">${FOPTS.map((f,i)=>`<div class="frow f" data-f data-a="font:${i}"><div class="radio ${i===fontNow?'on':''}"></div><div class="fm"><div class="fn">${f.n}${f.def?'<span class="tag">Default</span>':''}</div><div class="fs" style="font-family:${f.st}">Aa &nbsp;Evening Ragas · Morning Light · Asha Rao</div></div></div>`).join('')}</div><div class="fnote">Changes the font on the TV. The web player on your phone has its own font setting.</div>`}
 /* ---------- keys ---------- */
 let hold=null,held=false,rep=0,idleT=null;
 function wakeAmbient(){return false}

@@ -146,6 +146,17 @@ final class WebServer {
             if (path.equals("/") || path.equals("/index.html")) {
                 type = "text/html; charset=utf-8";
                 body = readAsset("index.html");
+            } else if (path.startsWith("/fonts/")) {
+                String name = path.substring(7);
+                if (name.matches("[A-Za-z0-9]+\\.ttf")) {
+                    type = "font/ttf";
+                    cache = "max-age=604800";
+                    body = readAsset("fonts/" + name);
+                } else {
+                    status = 404;
+                    type = "text/plain; charset=utf-8";
+                    body = "Not found".getBytes(StandardCharsets.UTF_8);
+                }
             } else if (path.equals("/art")) {
                 Track t = svc.trackAt(intArg(q.get("id")));
                 byte[] art = null;
