@@ -380,12 +380,17 @@ final class TvBrowse {
                     });
         }
         handler.post(refresh);
-        // Before the list exists the system would pick any rail item; start on the current tab.
-        handler.postDelayed(new Runnable() {
-            @Override public void run() {
-                if (root.findFocus() == null) railItems[tab].requestFocus();
-            }
-        }, 150);
+        // Before the list exists the system focuses the first rail item (Search), which would open
+        // the Search tab after a moment. Start on the current tab instead.
+        if (firstStart) {
+            firstStart = false;
+            handler.postDelayed(new Runnable() {
+                @Override public void run() {
+                    View f = root.findFocus();
+                    if (f == null || isInside(f, rail)) railItems[tab].requestFocus();
+                }
+            }, 100);
+        }
     }
 
     void stop() {
@@ -519,6 +524,7 @@ final class TvBrowse {
 
     private View lastContentFocus;
     private boolean focusWatch;
+    private boolean firstStart = true;
 
     private static boolean isInside(View v, View ancestor) {
         for (android.view.ViewParent p = v.getParent(); p != null; p = p.getParent()) {
@@ -536,7 +542,22 @@ final class TvBrowse {
             return false;
         }
         View f = root.findFocus();
-        if (f == null || !player.hasTrack()) return false;
+        if (f == null) return false;
+        boolean up = keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP;
+        if (list != null && !player.isOpen() && isInside(f, list)) {
+            int pos = list.getPositionForView(f);
+            // Up from the first song of a folder / album / artist page goes back to its Play button
+            // (the buttons scroll out of the list, so the focus search would not find them).
+            if (up && heroPlay != null && pos == list.getHeaderViewsCount()) {
+                focusHero();
+                return true;
+            }
+            // Up and Down inside a list must never jump into the left rail: that would switch the
+            // tab (and lose the open folder). The rail is only reached with Left.
+            View n = f.focusSearch(up ? View.FOCUS_UP : View.FOCUS_DOWN);
+            if (n != null && isInside(n, rail)) return true;
+        }
+        if (!player.hasTrack()) return false;
         boolean inBar = isInside(f, player.bar());
         if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
             if (inBar) return false;
