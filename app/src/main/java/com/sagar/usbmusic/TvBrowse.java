@@ -242,18 +242,32 @@ final class TvBrowse {
         }
         rail.addView(new View(activity), new LinearLayout.LayoutParams(1, 0, 1f));
 
+        View rescanSep = new View(activity);
+        rescanSep.setBackgroundColor(0xFF3A3A40);
+        LinearLayout.LayoutParams sepp = new LinearLayout.LayoutParams(-1, Math.max(2, px(2)));
+        sepp.leftMargin = px(16);
+        sepp.rightMargin = px(16);
+        sepp.topMargin = px(12);
+        sepp.bottomMargin = px(14);
+        rail.addView(rescanSep, sepp);
+
         rescanItem = railItem(R.drawable.ic_refresh, "Rescan USB");
         rescanIcon = (ImageView) rescanItem.getChildAt(0);
         rescanLabel = (TextView) rescanItem.getChildAt(1);
-        TvUi.focusable(rescanItem, 1.04f, new TvUi.FocusChange() {
+        // A quiet secondary item: it is rarely used, so it is smaller, grey and barely highlighted.
+        rescanIcon.getLayoutParams().width = px(28);
+        rescanIcon.getLayoutParams().height = px(28);
+        rescanLabel.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px(24));
+        rescanLabel.setTypeface(null, android.graphics.Typeface.NORMAL);
+        ((LinearLayout.LayoutParams) rescanLabel.getLayoutParams()).leftMargin = px(20);
+        TvUi.focusable(rescanItem, 1f, new TvUi.FocusChange() {
             @Override public void onFocus(boolean f) {
-                styleRail();
+                styleRescan();
             }
         });
         final Runnable rescanAction = new Runnable() {
             @Override public void run() {
-                act.startService(new Intent(act, MusicService.class).setAction(MusicService.ACTION_RESCAN));
-                toast("Scanning the USB drive…");
+                confirmRescan();
             }
         };
         rescanItem.setOnClickListener(new View.OnClickListener() {
@@ -262,7 +276,7 @@ final class TvBrowse {
             }
         });
         TvUi.pressToActivate(rescanItem, rescanAction);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, px(88));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, px(62));
         rp.bottomMargin = px(14);
         rail.addView(rescanItem, rp);
 
@@ -285,13 +299,13 @@ final class TvBrowse {
         qrText.addView(urlView);
         qrBox.addView(qrText, new LinearLayout.LayoutParams(0, -2, 1f));
         rail.addView(qrBox, new LinearLayout.LayoutParams(-1, -2));
-        TextView craftedBy = TvUi.text(activity, "CRAFTED BY", 16, 0xFF6F6F75, false);
+        TextView craftedBy = TvUi.text(activity, "CRAFTED BY", 17, 0xFFB4B4BA, true);
         craftedBy.setLetterSpacing(0.14f);
         LinearLayout.LayoutParams cbp = new LinearLayout.LayoutParams(-2, -2);
         cbp.topMargin = px(14);
         cbp.leftMargin = px(18);
         rail.addView(craftedBy, cbp);
-        TextView creator = TvUi.text(activity, "Sagar Nanivadekar", 21, 0xFFC6C6CC, true);
+        TextView creator = TvUi.text(activity, "Sagar Nanivadekar", 22, 0xFFF2F2F4, true);
         LinearLayout.LayoutParams crp = new LinearLayout.LayoutParams(-2, -2);
         crp.topMargin = px(2);
         crp.leftMargin = px(18);
@@ -807,8 +821,67 @@ final class TvBrowse {
             if (railItems[i] == null) continue;
             styleRailItem(railItems[i], railIcons[i], railLabels[i], i == tab);
         }
-        styleRailItem(rescanItem, rescanIcon, rescanLabel, false);
+        styleRescan();
         styleRailItem(searchItem, searchIcon, searchLabel, tab == SEARCH_TAB);
+    }
+
+    private void styleRescan() {
+        boolean f = rescanItem.hasFocus();
+        rescanItem.setBackground(f ? TvUi.round(0x24FFFFFF, 31) : null);
+        int c = f ? Color.WHITE : 0xFF8E8E94;
+        rescanLabel.setTextColor(c);
+        rescanIcon.setColorFilter(c, PorterDuff.Mode.SRC_IN);
+    }
+
+    /** Rescanning reads the whole drive and takes a while, so ask first (Cancel has the focus). */
+    private void confirmRescan() {
+        final Dialog d = new Dialog(act, android.R.style.Theme_Translucent_NoTitleBar);
+        FrameLayout scrim = new FrameLayout(act);
+        scrim.setBackgroundColor(0xB8000000);
+        LinearLayout box = new LinearLayout(act);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setBackground(TvUi.round(0xFF1C1C1F, 36));
+        box.setPadding(px(60), px(52), px(60), px(48));
+        TextView title = TvUi.text(act, "Rescan the USB drive?", 52, TvUi.TEXT, true);
+        title.setGravity(Gravity.CENTER);
+        box.addView(title, new LinearLayout.LayoutParams(-1, -2));
+        TextView note = TvUi.text(act, "The TV reads the whole drive again.\nThis can take a minute or two. Music keeps playing, and the library updates when it is done.",
+                28, 0xFFB8B8BE, false);
+        note.setSingleLine(false);
+        note.setGravity(Gravity.CENTER);
+        note.setLineSpacing(0, 1.3f);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2);
+        np.topMargin = px(22);
+        np.bottomMargin = px(38);
+        box.addView(note, np);
+        LinearLayout row = new LinearLayout(act);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        row.setClipChildren(false);
+        TextView cancel = pill("Cancel", false, new Runnable() {
+            @Override public void run() {
+                d.dismiss();
+            }
+        });
+        TextView go = pill("Rescan", true, new Runnable() {
+            @Override public void run() {
+                d.dismiss();
+                act.startService(new Intent(act, MusicService.class).setAction(MusicService.ACTION_RESCAN));
+                toast("Scanning the USB drive…");
+            }
+        });
+        row.addView(cancel, new LinearLayout.LayoutParams(-2, px(76)));
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-2, px(76));
+        gp.leftMargin = px(26);
+        row.addView(go, gp);
+        box.addView(row, new LinearLayout.LayoutParams(-2, -2));
+        scrim.addView(box, new FrameLayout.LayoutParams(px(1000), -2, Gravity.CENTER));
+        d.setContentView(scrim);
+        d.setCancelable(true);
+        d.show();
+        d.getWindow().setLayout(-1, -1);
+        cancel.requestFocus();
     }
 
     private void selectTab(int n, boolean takeFocus) {
@@ -1091,8 +1164,14 @@ final class TvBrowse {
 
         final EditText field = new EditText(act);
         field.setSingleLine(true);
-        field.setHint("Search songs, albums, folders, artists");
+        field.setHint("Search songs, albums");
         field.setHintTextColor(0xFF8A8A90);
+        // The magnifier inside the field, like on the search bar of the design.
+        android.graphics.drawable.Drawable mag = act.getDrawable(R.drawable.ic_search).mutate();
+        mag.setTint(0xFF9A9AA0);
+        mag.setBounds(0, 0, px(36), px(36));
+        field.setCompoundDrawables(mag, null, null, null);
+        field.setCompoundDrawablePadding(px(20));
         field.setTextColor(Color.WHITE);
         field.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(30));
         field.setPadding(px(34), 0, px(34), 0);
@@ -1277,6 +1356,7 @@ final class TvBrowse {
     // ---- Folders page: Folder view (cover grid) or List view ---------------------------------
 
     private View segGrid, segList;
+    private Runnable pendingSeg;
     private TextView segTip;
 
     /** The name of an icon-only button, shown under it while it has the focus. */
@@ -1312,7 +1392,6 @@ final class TvBrowse {
                 }
             }, 120);
         }
-        toast(toList ? "List view" : "Folder view");
     }
 
     /** One half of the view switch: icon plus label. */
@@ -1335,6 +1414,16 @@ final class TvBrowse {
                 ic.setColorFilter(f ? Color.BLACK : on ? Color.WHITE : 0xFFCFCFD4, PorterDuff.Mode.SRC_IN);
                 if (f) showSegTip(seg, tipText);
                 else segTip.setVisibility(View.GONE);
+                if (pendingSeg != null) handler.removeCallbacks(pendingSeg);
+                if (f && toList != foldersAsList()) {
+                    // Resting on the other icon switches the page: no OK press needed.
+                    pendingSeg = new Runnable() {
+                        @Override public void run() {
+                            if (seg.hasFocus()) switchFolders(toList);
+                        }
+                    };
+                    handler.postDelayed(pendingSeg, 250);
+                }
             }
         });
         Runnable action = new Runnable() {

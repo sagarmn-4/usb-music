@@ -26,7 +26,10 @@ html,body{height:100%;background:#000;overflow:hidden;font-family:Roboto,"Segoe 
 .ri svg{width:40px;height:40px;fill:currentColor;flex:none}
 .ri.on{background:rgba(255,255,255,.12)}
 .ri.focus{background:#fff;color:#000;transform:scale(1.04);box-shadow:0 10px 34px rgba(0,0,0,.5)}
-.sep{height:1px;background:#262626;margin:18px 16px}
+.ri.sub{height:62px;font-size:24px;font-weight:400;color:#8e8e94;gap:20px;padding:0 30px}
+.ri.sub svg{width:28px;height:28px}
+.ri.sub.focus{background:rgba(255,255,255,.14);color:#fff;transform:none;box-shadow:none}
+.sep{height:2px;background:#3a3a40;margin:12px 16px 14px;border-radius:1px}
 .rfill{flex:1}
 .qr{display:flex;align-items:center;gap:16px;padding:12px 16px;border-radius:20px;background:rgba(255,255,255,.06);font-size:20px;line-height:1.3;color:#cfcfd4;margin-top:10px}
 .qr b{display:block;color:#fff;font-size:22px}
@@ -196,11 +199,13 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 .amb #rail,.amb #top,.amb .qpanel,.amb #bar .ctls,.amb #bar .right,.amb #bar .info{opacity:0}
 .amb .nleft{transform:scale(1.07) translateX(150px)}
 .cred{margin-top:14px;padding:0 18px;font-size:19px;line-height:1.35;color:#8e8e94;letter-spacing:.3px}
-.cred span{display:block;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#6f6f75}
-.cred b{font-weight:500;color:#c6c6cc;font-size:21px}
+.cred span{display:block;font-size:17px;letter-spacing:2px;text-transform:uppercase;color:#b4b4ba;font-weight:600}
+.cred b{font-weight:600;color:#f2f2f4;font-size:22px}
 .logo.big{width:120px;height:120px}.logo.big i{border-left:40px solid #fff;border-top:24px solid transparent;border-bottom:24px solid transparent;margin-left:12px}
-#about{position:absolute;inset:0;z-index:55;background:rgba(0,0,0,.72);display:none;place-items:center}
-#about.open{display:grid;animation:fade .2s}
+#about,#confirm{position:absolute;inset:0;z-index:55;background:rgba(0,0,0,.72);display:none;place-items:center}
+#about.open,#confirm.open{display:grid;animation:fade .2s}
+.cbox{width:1000px}.cbox h2{font-size:52px;margin:0 0 10px}.cbox .note{margin:18px 0 38px;font-size:28px}
+.crow{display:flex;gap:26px}
 .abox{width:900px;padding:56px 60px 50px;border-radius:36px;background:#1c1c1f;box-shadow:0 40px 120px rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;text-align:center;animation:pop .25s cubic-bezier(.2,.8,.2,1)}
 .abox h2{font-size:60px;margin:26px 0 6px;letter-spacing:-1px}
 .abox .ver{font-size:26px;color:var(--muted)}
@@ -218,13 +223,14 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 <div id="wrap"><div id="stage">
   <div id="bg"></div>
   <nav id="rail"></nav>
-  <div id="top"><div class="sfield f" data-f data-a="search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>Search songs, albums, artists</div></div>
+  <div id="top"><div class="sfield f" data-f data-a="search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>Search songs, albums</div></div>
   <main id="view"></main>
   <section id="np"></section>
   <footer id="bar"></footer>
   <div id="search"></div>
   <div id="menu"></div>
   <div id="about"></div>
+  <div id="confirm"></div>
   <div id="splash"></div>
   <div id="toast"></div>
   <div id="letter"></div>
@@ -282,11 +288,12 @@ let letterT=null,fastScrolling=false;
 function showLetter(t){const e=$('#letter');e.textContent=(t.title[0]||'').toUpperCase();e.classList.add('on');clearTimeout(letterT);letterT=setTimeout(()=>e.classList.remove('on'),700)}
 function setFocus(el,noScroll){if(!el)return;if(focusEl)focusEl.classList.remove('focus');focusEl=el;el.classList.add('focus');
  if(S.tab===2&&!S.path){const a=el.getAttribute('data-a')||'';if(a.startsWith('song:')&&fastScrolling)showLetter(TR[+a.split(':')[1]])}
- clearTimeout(railT);
+ clearTimeout(railT);clearTimeout(setFocus.fvT);
+ if(el.dataset&&el.dataset.a&&el.dataset.a.startsWith('fv:')&&el.dataset.a.slice(3)!==S.fview){setFocus.fvT=setTimeout(()=>{if(focusEl===el)activate(el)},250)} /* resting on the other icon switches the view: no click needed */
  if(el.closest('#rail')&&el.dataset.a&&el.dataset.a.startsWith('tab:')){const i=+el.dataset.a.split(':')[1];if(i!==S.tab||S.path)railT=setTimeout(()=>{if(focusEl===el)activate(el,true)},320)}
  if(!noScroll){const sc=el.closest('#view,#qlist');if(sc){const r=el.getBoundingClientRect(),c=sc.getBoundingClientRect(),k=stageScale();const top=(r.top-c.top)/k,bot=(r.bottom-c.top)/k,H=sc.clientHeight;if(top<30||bot>H-30)sc.scrollTop+=((top+bot)/2-H/2)}}}
 function npOpen(){return $('#np').classList.contains('open')}
-function roots(){if($('#about').classList.contains('open'))return[$('#about')];if($('#menu').classList.contains('open'))return[$('#menu')];if($('#search').classList.contains('open'))return[$('#search')];if(npOpen())return[$('#np')];return[$('#rail'),$('#top'),$('#view'),$('#bar')]}
+function roots(){if($('#confirm').classList.contains('open'))return[$('#confirm')];if($('#about').classList.contains('open'))return[$('#about')];if($('#menu').classList.contains('open'))return[$('#menu')];if($('#search').classList.contains('open'))return[$('#search')];if(npOpen())return[$('#np')];return[$('#rail'),$('#top'),$('#view'),$('#bar')]}
 function cands(){const np=$('#np');return roots().flatMap(r=>[...r.querySelectorAll('[data-f]')]).filter(e=>{if(np.classList.contains('open')&&e.closest('#qside')&&!np.classList.contains('q'))return false;const b=e.getBoundingClientRect();return b.width>0&&b.height>0})}
 function move(d){const a=cands();if(!focusEl||!a.includes(focusEl)){setFocus(a[0]);return}
  const f=focusEl.getBoundingClientRect(),cx=f.left+f.width/2,cy=f.top+f.height/2;let best=null,bs=1e9;
@@ -296,7 +303,7 @@ function move(d){const a=cands();if(!focusEl||!a.includes(focusEl)){setFocus(a[0
  if(best)setFocus(best);else bump(d)}
 function bump(d){const e=focusEl;if(!e)return;const m={r:'8px 0',l:'-8px 0',d:'0 8px',u:'0 -8px'}[d];e.animate([{translate:'0 0'},{translate:m},{translate:'0 0'}],{duration:220,easing:'ease-out'})}
 /* ---------- rendering ---------- */
-function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>[t,i]).filter(([t,i])=>i===0||i===2).map(([t,i])=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="ri f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div><div class="cred"><span>Crafted by</span><b>Sagar Nanivadekar</b></div>`;qrDraw()}
+function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>[t,i]).filter(([t,i])=>i===0||i===2).map(([t,i])=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="sep"></div><div class="ri sub f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div><div class="cred"><span>Crafted by</span><b>Sagar Nanivadekar</b></div>`;qrDraw()}
 function songRow(t,i,mode){const cur=S.cur===t;const lead=mode==='n'?`<div class="n">${i+1}</div>`:`<div class="th">${art(t)}</div>`;
  return `<div class="row f ${cur?'cur':''}" data-f data-menu data-a="song:${t.id}:${mode==='n'?'f':'all'}">${lead}<div class="mt"><div class="t">${t.title}</div><div class="s">${t.artist}${mode==='n'?'':' · '+t.folder}</div></div>${cur?'<span class="eq"><i></i><i></i><i></i></span>':''}<div class="d">${fmt(t.dur)}</div></div>`}
 function renderView(keep){const v=$('#view');let h='';const f=S.path&&S.path[S.path.length-1];
@@ -368,7 +375,9 @@ function activate(el,quiet){if(!el)return;const a=el.getAttribute('data-a')||'',
  case'tab':S.tab=+p[1];S.path=null;renderRail();renderView();setFocus(document.querySelector(`#rail [data-a="tab:${S.tab}"]`),true);if(!quiet)setFocus(document.querySelector('#view [data-f]'),true);break;
  case'about':openAbout(true);break;
  case'aboutclose':openAbout(false);break;
- case'rescan':toast('Scanning USB…  '+TR.length+' songs found');break;
+ case'rescan':openConfirm(true);break;
+ case'rescanno':openConfirm(false);break;
+ case'rescanyes':openConfirm(false);toast('Scanning the USB drive…');break;
  case'fold':{const f=FOLD[+p[1]];if($('#search').classList.contains('open'))open('#search',false);S.path=[f];renderRail();renderView();break}
  case'open':{const f=S.path[0].subs[+p[1]];S.path.push(f);renderView();break}
  case'artist':{const i=+p[1],a=ARTISTS[i],ss=TR.filter(t=>t.artist===a);S.path=[{n:a,h:i*55,art:1,songs:ss,cnt:ss.length+' songs',isArtist:1}];renderView();break}
@@ -381,7 +390,7 @@ function activate(el,quiet){if(!el)return;const a=el.getAttribute('data-a')||'',
  case'search':openSearch();break;
  case'np':openNP(true);break;
  case'queue':if(npOpen()){const np=$('#np');if(np.classList.contains('q'))closeQ();else{np.classList.add('q');setFocus(np.querySelector('#qlist [data-f]'),true)}}else openNP(true,true);break;
- case'fv':{S.fview=p[1];renderView();setFocus(document.querySelector('#view .sg.on'),true);toast(p[1]==='grid'?'Folder view':'List view');break}
+ case'fv':{S.fview=p[1];renderView();setFocus(document.querySelector('#view .sg.on'),true);break}
  case'gotofolder':{const t=S.cur,f=t.fo;if(npOpen())openNP(false);S.tab=0;S.path=FOLD.includes(f)?[f]:[FOLD.find(x=>x.subs&&x.subs.includes(f)),f];renderRail();renderView();setFocus($('#view .row.cur')||$('#view .cbtn.big'),true);toast('Folder of the playing song: '+f.n);break}
  case'gotoparent':{if(S.path&&S.path.length>1){const from=S.path.pop().n;renderView();toast('Parent folder of '+from+': '+S.path[S.path.length-1].n)}else if(S.path){const from=S.path[0].n;S.path=null;S.tab=0;renderRail();renderView();toast('Parent of '+from+': all folders')}break}
  case'toggle':S.playing=!S.playing;renderBar();renderNP();if(npOpen())setFocus(document.querySelector('#np [data-a=toggle]'),true);else refocusBar('toggle');break;
@@ -398,7 +407,7 @@ function openSearch(){const rows=['1234567890','qwertyuiop','asdfghjkl←','zxcv
  rows.forEach(r=>{[...r].forEach(c=>{h+=`<div class="key f" data-f data-k="${c}" data-a="key">${c==='←'?'⌫':c.toUpperCase()}</div>`})});
  h+=`<div class="key w3 f" data-f data-k=" " data-a="key">space</div><div class="key w3 f" data-f data-k="←" data-a="key">⌫ clear</div></div><div id="sres"></div>`;
  $('#search').innerHTML=h;open('#search',true);sq='';sdraw();setFocus($('#search [data-f]'),true)}
-function sdraw(){$('#sbox').innerHTML=sq?`<span>${sq}</span><i class="caret"></i>`:`<span class="ph">Search songs, albums, artists</span><i class="caret"></i>`;
+function sdraw(){$('#sbox').innerHTML=sq?`<span>${sq}</span><i class="caret"></i>`:`<span class="ph">Search songs, albums</span><i class="caret"></i>`;
  const r=$('#sres');if(!sq){r.style.display='none';return}
  const q=sq.trim();const m=TR.filter(t=>(t.title+t.artist+t.folder).toLowerCase().includes(q)).slice(0,4);
  const fo=FOLD.filter(f=>f.n.toLowerCase().includes(q)).slice(0,2);
@@ -406,6 +415,9 @@ function sdraw(){$('#sbox').innerHTML=sq?`<span>${sq}</span><i class="caret"></i
 function skey(k){if(k==='←')sq=sq.slice(0,-1);else sq+=k;sdraw()}
 /* ---------- developer credit: three options to compare (keys 1, 2, 3) ---------- */
 let splashT=null;
+function openConfirm(on){const c=$('#confirm');
+ if(on){c.innerHTML=`<div class="abox cbox"><h2>Rescan the USB drive?</h2><div class="note">The TV reads the whole drive again.<br>This can take a minute or two. Music keeps playing, and the library updates when it is done.</div><div class="crow"><div class="pill f" data-f data-a="rescanno">Cancel</div><div class="pill pri f" data-f data-a="rescanyes">Rescan</div></div></div>`;c.classList.add('open');setFocus(c.querySelector('[data-a="rescanno"]'),true)}
+ else{c.classList.remove('open');const r=document.querySelector('#rail [data-a="rescan"]');if(r)setFocus(r,true)}}
 function openAbout(on){const a=$('#about');if(on){a.innerHTML=`<div class="abox"><div class="logo big"><i></i></div><h2>USB Music</h2><div class="ver">Version 1.1</div><div class="who"><span>Developer</span><b>Sagar Nanivadekar</b></div><div class="note">Plays the music on your USB drive through the TV.<br>Control it from the remote or from your phone at 192.168.1.6:8080.</div><div class="pill pri f" data-f data-a="aboutclose">Close</div></div>`;a.classList.add('open');setFocus(a.querySelector('[data-f]'),true)}else{a.classList.remove('open');const r=document.querySelector('#rail [data-a="about"]');if(r)setFocus(r,true)}}
 function splash(){const e=$('#splash');e.innerHTML=`<div class="sbox"><div class="logo big"><i></i></div><h1>USB Music</h1><div class="who"><span>Crafted by</span><b>Sagar Nanivadekar</b></div></div>`;e.classList.add('on');clearTimeout(splashT);splashT=setTimeout(()=>e.classList.remove('on'),3200)}
 /* ---------- keys ---------- */
@@ -435,6 +447,7 @@ addEventListener('keydown',e=>{const k=e.key;
 addEventListener('keyup',e=>{if(e.key==='Enter'){clearTimeout(hold);if(swallowUp){swallowUp=false;return}if(!held)activate(focusEl);held=false}});
 addEventListener('click',e=>{const el=e.target.closest('[data-f]');if(el&&cands().includes(el)){setFocus(el,true);activate(el)}});
 function back(){
+ if($('#confirm').classList.contains('open'))return openConfirm(false);
  if($('#about').classList.contains('open'))return openAbout(false);
  if($('#menu').classList.contains('open'))return closeMenu();
  if($('#search').classList.contains('open')){open('#search',false);return setFocus(document.querySelector('[data-a=search]'),true)}
