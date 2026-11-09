@@ -1193,9 +1193,7 @@ final class TvBrowse {
 
     private void showGrid(List<Card> cards, String title, boolean circle, int focus) {
         ListView lv = newList();
-        // Headers are "selectable" on purpose: setSelection(0) skips a non-selectable header and
-        // scrolls the first row to the top instead, which hides the heading or the hero.
-        lv.addHeaderView(heading(title), null, true);
+        lv.addHeaderView(heading(title), null, false);
         final CardAdapter a = new CardAdapter(cards, circle);
         lv.setAdapter(a);
         content.addView(lv, new FrameLayout.LayoutParams(-1, -1));
@@ -1363,7 +1361,7 @@ final class TvBrowse {
             }
         }), sp);
         head.addView(btns);
-        lv.addHeaderView(head, null, true);
+        lv.addHeaderView(head, null, false);
         List<RowItem> items = new ArrayList<>();
         for (int id : all) items.add(songItem(id, 0, false));
         final RowAdapter a = new RowAdapter(items, "all", "");
@@ -1451,7 +1449,7 @@ final class TvBrowse {
 
     private void showDetail(Detail d, boolean restoreFocus) {
         ListView lv = newList();
-        lv.addHeaderView(heroView(d), null, true);
+        lv.addHeaderView(heroView(d), null, false);
         List<RowItem> items = new ArrayList<>();
         for (LibraryIndex.Node n : d.children) {
             RowItem r = new RowItem();
@@ -1702,7 +1700,9 @@ final class TvBrowse {
     private void focusHero() {
         final ListView lv = list;
         if (lv == null) return;
-        lv.setSelection(0);
+        // Scroll to the top without selecting anything: setSelection(0) would skip the (non-selectable)
+        // header and put the first song at the top instead.
+        lv.smoothScrollToPositionFromTop(0, 0, 120);
         final View target = heroPlay;
         lv.postDelayed(new Runnable() {
             @Override public void run() {
@@ -1715,10 +1715,10 @@ final class TvBrowse {
                         @Override public void run() {
                             if (lv == list) target.requestFocus();
                         }
-                    }, 150);
+                    }, 200);
                 }
             }
-        }, 80);
+        }, 260);
     }
 
     /** Puts the remote focus on item {@code index} (a card, or a row when cols is 1). */
@@ -1727,8 +1727,10 @@ final class TvBrowse {
         if (lv == null || !grab) return;
         int rowIdx = index / cols;
         final int focusPos = lv.getHeaderViewsCount() + rowIdx;
-        // The first row scrolls to the very top so the heading (or the hero) stays in view.
-        lv.setSelection(rowIdx == 0 ? 0 : focusPos);
+        // The first row scrolls to the very top so the heading (or the hero) stays in view
+        // (setSelection(0) would skip the non-selectable header, so scroll instead).
+        if (rowIdx == 0) lv.smoothScrollToPositionFromTop(0, 0, 120);
+        else lv.setSelection(focusPos);
         lv.postDelayed(new Runnable() {
             @Override public void run() {
                 if (lv != list) return;
@@ -1743,7 +1745,7 @@ final class TvBrowse {
                 }
                 target.requestFocus();
             }
-        }, 80);
+        }, rowIdx == 0 ? 260 : 80);
     }
 
     // ---- QR -------------------------------------------------------------------------------
