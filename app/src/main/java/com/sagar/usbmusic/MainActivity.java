@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     /** Any key wakes the screen from ambient mode (that key is then not used for anything else). */
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (browse.onActivity()) return true;
+            if (browse.onActivity(event.getKeyCode())) return true;
             if (browse.onNavKey(event.getKeyCode())) return true;
         }
         return super.dispatchKeyEvent(event);

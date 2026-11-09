@@ -166,7 +166,7 @@ input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(
 input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;background:#fff;border:0}
 input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:0}
-.ctl{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px}
+.ctl{display:flex;justify-content:center;align-items:center;gap:48px;margin:8px 0 4px}
 .ctl .round{width:52px;height:52px;color:var(--muted)}
 .ctl .round.on{color:var(--accent)}
 .ctl .round.skip{color:var(--text)}
@@ -293,11 +293,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     <input id="seek" type="range" min="0" max="0" value="0">
     <div class="times"><span id="t0">0:00</span><span id="t1">0:00</span></div>
     <div class="ctl">
-      <button class="round" id="shuf" aria-label="Shuffle"><svg class="ic"><use href="#i-shuffle"/></svg></button>
       <button class="round skip" id="prev" aria-label="Previous"><svg class="ic"><use href="#i-prev"/></svg></button>
       <button class="main" id="toggle" aria-label="Play or pause"><svg class="ic"><use href="#i-play"/></svg></button>
       <button class="round skip" id="next" aria-label="Next"><svg class="ic"><use href="#i-next"/></svg></button>
-      <button class="round" id="rep" aria-label="Repeat"><svg class="ic"><use href="#i-repeat"/></svg></button>
     </div>
     <div class="vol">
       <div class="vlabel"><svg class="ic"><use href="#i-vol"/></svg>TV volume</div>
@@ -898,10 +896,6 @@ function applyState(s) {
   const pl = !!s.playing;
   setIcon($('#mtoggle'), pl ? 'pause' : 'play');
   setIcon($('#toggle'), pl ? 'pause' : 'play');
-  $('#shuf').classList.toggle('on', s.shuffle);
-  const rep = $('#rep');
-  rep.classList.toggle('on', s.repeat !== 'off');
-  setIcon(rep, s.repeat === 'one' ? 'repeat1' : 'repeat');
   $('#mprog').style.width = (s.dur > 0 ? s.pos / s.dur * 100 : 0) + '%';
   if (!seeking) {
     setRange($('#seek'), s.pos, s.dur);
@@ -1183,8 +1177,6 @@ window.addEventListener('popstate', () => {
 $('#toggle').onclick = $('#mtoggle').onclick = () => cmd('toggle');
 $('#next').onclick = $('#mnext').onclick = () => cmd('next');
 $('#prev').onclick = () => cmd('prev');
-$('#shuf').onclick = () => cmd('shuffle?on=' + (st.shuffle ? 0 : 1));
-$('#rep').onclick = () => cmd('repeat?mode=' + ({off: 'all', all: 'one', one: 'off'}[st.repeat] || 'all'));
 
 $('#seek').addEventListener('input', e => {
   seeking = true;

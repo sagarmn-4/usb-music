@@ -56,7 +56,6 @@ final class TvBrowse {
     private static final int[] TAB_ICONS = {
             R.drawable.ic_album, R.drawable.ic_album, R.drawable.ic_note, R.drawable.ic_person};
     private static final int REST = 0xFFE6E6EA;
-    private static final long AMBIENT_MS = 30000;
     private static final int SEARCH_TAB = 4;
 
     private LinearLayout searchItem;
@@ -80,14 +79,6 @@ final class TvBrowse {
     private final LinearLayout rail;
     private final View divider;
     private final TvPlayer player;
-    private final Runnable enterAmbient = new Runnable() {
-        @Override public void run() {
-            if (player.isOpen()) {
-                player.setAmbient(true);
-                rail.animate().alpha(0f).setDuration(1400).start();
-            }
-        }
-    };
     private final LinearLayout[] railItems = new LinearLayout[TABS.length];
     private final ImageView[] railIcons = new ImageView[TABS.length];
     private final TextView[] railLabels = new TextView[TABS.length];
@@ -336,12 +327,11 @@ final class TvBrowse {
             }
 
             @Override public void npOpened(boolean open) {
+                // The full page covers everything: the screens and the bar under it must not take the focus.
                 int mode = open ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_BEFORE_DESCENDANTS;
                 rail.setDescendantFocusability(mode);
                 content.setDescendantFocusability(mode);
-                handler.removeCallbacks(enterAmbient);
-                if (open) handler.postDelayed(enterAmbient, AMBIENT_MS);
-                else rail.animate().alpha(1f).setDuration(300).start();
+                ((ViewGroup) player.bar()).setDescendantFocusability(mode);
             }
 
             @Override public void showMenu(String title, String sub, Track art, String[] labels, Runnable[] actions) {
@@ -368,6 +358,9 @@ final class TvBrowse {
         root.addView(toastView, tl);
 
         styleRail();
+        // Top of the stack: the full-page player (above the rail and the bar), then the messages.
+        player.np().bringToFront();
+        toastView.bringToFront();
     }
 
     View view() {
@@ -404,10 +397,7 @@ final class TvBrowse {
 
     /** Back button: goes up one level. Returns false when already at the top. */
     boolean onBack() {
-        if (player.isOpen()) {
-            player.closeNp();
-            return true;
-        }
+        if (player.onBack()) return true;
         if (!stack.isEmpty()) {
             stack.remove(stack.size() - 1);
             showCurrent(true);
@@ -423,6 +413,7 @@ final class TvBrowse {
     void command(String cmd, String... kv) {
         MusicService s = MusicService.get();
         if (s != null) {
+            if ("play".equals(cmd)) player.expectPlayback();
             s.command(cmd, kv);
             tick();
         }
@@ -497,15 +488,8 @@ final class TvBrowse {
     }
 
     /** Called for every key press. True when the key only woke the screen from ambient mode. */
-    boolean onActivity() {
-        handler.removeCallbacks(enterAmbient);
-        if (player.isOpen()) handler.postDelayed(enterAmbient, AMBIENT_MS);
-        if (player.isAmbient()) {
-            player.setAmbient(false);
-            rail.animate().alpha(1f).setDuration(300).start();
-            return true;
-        }
-        return false;
+    boolean onActivity(int keyCode) {
+        return player.onUserKey(keyCode);
     }
 
     /** Remote's Menu/Options key: same as holding OK on the focused song. */

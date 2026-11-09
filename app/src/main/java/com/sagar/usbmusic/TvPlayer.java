@@ -77,12 +77,13 @@ final class TvPlayer {
     private LinearLayout info;
     private TvUi.ArtView barArt;
     private TextView barTitle, barSub, timeView, tip;
-    private ImageView btnShuffle, btnPlay, btnRepeat;
+    private ImageView btnPlay, npPlay, npQueueBtn;
 
     // now playing
-    private FrameLayout artHolder;
-    private LinearLayout nleft, qpanel;
-    private TextView npTitle, npArtist, fromView, curTitle, curSub, curDur;
+    private FrameLayout artHolder, ctlPanel;
+    private LinearLayout mainCol, qpanel;
+    private TextView npTitle, npArtist, npKick, fromView, curTitle, curSub, curDur, npTime, npTotal, npTip;
+    private SeekView npSeek;
     private TvUi.ArtView curArt;
     private View tintView;
     private ListView queueList;
@@ -95,11 +96,17 @@ final class TvPlayer {
 
     // state
     private int id = -1;
-    private boolean playing, hasTrack, open, ambient;
-    private boolean shuffleOn, repeatOn;
+    private boolean playing, hasTrack, open, ctlShown, queueOpen, autoOpen;
     private int pos, dur;
     private int lastUpnext = -1, lastQueueId = -2;
-    private String repeatMode = "off";
+    /** How long the player controls stay on the full page after the song starts or a button is pressed. */
+    private static final long CTL_MS = 15000;
+    private final java.util.Set<View> tinted = new java.util.HashSet<>();
+    private final Runnable hideCtlRun = new Runnable() {
+        @Override public void run() {
+            hideCtl();
+        }
+    };
     private final List<QItem> queueItems = new ArrayList<>();
 
     TvPlayer(Activity activity, Host h) {
@@ -165,11 +172,6 @@ final class TvPlayer {
         ctls.setOrientation(LinearLayout.HORIZONTAL);
         ctls.setGravity(Gravity.CENTER);
         ctls.setClipChildren(false);
-        btnShuffle = iconBtn(R.drawable.ic_shuffle, 70, 18, false, new Runnable() {
-            @Override public void run() {
-                host.command("shuffle", "on", shuffleOn ? "0" : "1");
-            }
-        });
         ImageView prev = iconBtn(R.drawable.ic_prev, 70, 18, false, new Runnable() {
             @Override public void run() {
                 host.command("prev");
@@ -185,17 +187,9 @@ final class TvPlayer {
                 host.command("next");
             }
         });
-        btnRepeat = iconBtn(R.drawable.ic_repeat, 70, 18, false, new Runnable() {
-            @Override public void run() {
-                String m = "off".equals(repeatMode) ? "all" : "all".equals(repeatMode) ? "one" : "off";
-                host.command("repeat", "mode", m);
-            }
-        });
-        addBtn(ctls, btnShuffle, 70, 11);
         addBtn(ctls, prev, 70, 11);
         addBtn(ctls, btnPlay, 84, 11);
         addBtn(ctls, next, 70, 11);
-        addBtn(ctls, btnRepeat, 70, 11);
         row.addView(ctls, new LinearLayout.LayoutParams(0, -2, 1f));
 
         LinearLayout right = new LinearLayout(act);
@@ -234,7 +228,7 @@ final class TvPlayer {
         skp.topMargin = -px(16);
         bar.addView(seek, skp);
 
-        // ---- now-playing page
+        // ---- now-playing page: the whole screen, one centred column; the controls hide by themselves
         np = new FrameLayout(act);
         np.setBackgroundColor(0xFF060606);
         np.setVisibility(View.GONE);
@@ -242,43 +236,46 @@ final class TvPlayer {
 
         tintView = new View(act);
         tintDrawable.setGradientType(GradientDrawable.RADIAL_GRADIENT);
-        tintDrawable.setGradientRadius(px(1100));
-        tintDrawable.setGradientCenter(0.25f, 0.42f);
+        tintDrawable.setGradientRadius(px(1300));
+        tintDrawable.setGradientCenter(0.5f, 0.34f);
         setTint(tintColor);
         tintView.setBackground(tintDrawable);
         np.addView(tintView, new FrameLayout.LayoutParams(-1, -1));
 
-        LinearLayout page = new LinearLayout(act);
-        page.setOrientation(LinearLayout.HORIZONTAL);
-        // The page spans the whole screen (so ambient mode can fill it); the rail and bar sit on top.
-        page.setPadding(px(470), px(60), px(90), px(130));
-        page.setClipChildren(false);
-        np.addView(page, new FrameLayout.LayoutParams(-1, -1));
-
-        nleft = new LinearLayout(act);
-        nleft.setOrientation(LinearLayout.VERTICAL);
-        nleft.setGravity(Gravity.CENTER_HORIZONTAL);
-        nleft.setClipChildren(false);
+        mainCol = new LinearLayout(act);
+        mainCol.setOrientation(LinearLayout.VERTICAL);
+        mainCol.setGravity(Gravity.CENTER);
+        mainCol.setPadding(px(200), 0, px(200), px(310));
+        mainCol.setClipChildren(false);
         artHolder = new FrameLayout(act);
         artHolder.setClipChildren(false);
-        nleft.addView(artHolder, new LinearLayout.LayoutParams(px(560), px(560)));
-        npTitle = TvUi.text(act, "", 46, TvUi.TEXT, true);
+        mainCol.addView(artHolder, new LinearLayout.LayoutParams(px(440), px(440)));
+        npKick = TvUi.text(act, "", 25, 0xA6FFFFFF, true);
+        npKick.setLetterSpacing(0.12f);
+        npKick.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams kp = new LinearLayout.LayoutParams(-1, -2);
+        kp.topMargin = px(34);
+        mainCol.addView(npKick, kp);
+        npTitle = TvUi.text(act, "", 68, TvUi.TEXT, true);
         npTitle.setSingleLine(false);
         npTitle.setMaxLines(2);
         npTitle.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams ntp = new LinearLayout.LayoutParams(-1, -2);
-        ntp.topMargin = px(34);
-        nleft.addView(npTitle, ntp);
-        npArtist = TvUi.text(act, "", 32, 0xFFD8D8DC, false);
+        ntp.topMargin = px(12);
+        mainCol.addView(npTitle, ntp);
+        npArtist = TvUi.text(act, "", 42, 0xFFE0E0E4, false);
         npArtist.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams nap = new LinearLayout.LayoutParams(-1, -2);
-        nap.topMargin = px(8);
-        nleft.addView(npArtist, nap);
-        page.addView(nleft, new LinearLayout.LayoutParams(px(600), -1));
+        nap.topMargin = px(10);
+        mainCol.addView(npArtist, nap);
+        np.addView(mainCol, new FrameLayout.LayoutParams(-1, -1));
 
+        // Up next: slides in from the right, only while the controls are shown
         qpanel = new LinearLayout(act);
         qpanel.setOrientation(LinearLayout.VERTICAL);
         qpanel.setClipChildren(false);
+        qpanel.setBackgroundColor(0xF20E0E10);
+        qpanel.setPadding(px(60), px(80), px(60), px(230));
         TextView tab = TvUi.text(act, "UP NEXT", 28, TvUi.TEXT, true);
         tab.setLetterSpacing(0.06f);
         qpanel.addView(tab, new LinearLayout.LayoutParams(-2, -2));
@@ -335,9 +332,91 @@ final class TvPlayer {
         qAdapter = new QueueAdapter();
         queueList.setAdapter(qAdapter);
         qpanel.addView(queueList, new LinearLayout.LayoutParams(-1, 0, 1f));
-        LinearLayout.LayoutParams qp = new LinearLayout.LayoutParams(0, -1, 1f);
-        qp.leftMargin = px(70);
-        page.addView(qpanel, qp);
+        qpanel.setVisibility(View.INVISIBLE);
+        qpanel.setTranslationX(px(800));
+        np.addView(qpanel, new FrameLayout.LayoutParams(px(800), -1, Gravity.END));
+
+        // player controls along the bottom
+        ctlPanel = new FrameLayout(act);
+        ctlPanel.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x00000000, 0xE6000000}));
+        ctlPanel.setPadding(px(130), px(150), px(130), px(56));
+        ctlPanel.setClipChildren(false);
+        ctlPanel.setClipToPadding(false);
+        LinearLayout col = new LinearLayout(act);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setClipChildren(false);
+        npSeek = new SeekView(act);
+        col.addView(npSeek, new LinearLayout.LayoutParams(-1, px(44)));
+        LinearLayout times = new LinearLayout(act);
+        times.setOrientation(LinearLayout.HORIZONTAL);
+        npTime = TvUi.text(act, "0:00", 26, 0xFFCFCFD4, false);
+        npTotal = TvUi.text(act, "0:00", 26, 0xFFCFCFD4, false);
+        npTotal.setGravity(Gravity.END);
+        times.addView(npTime, new LinearLayout.LayoutParams(0, -2, 1f));
+        times.addView(npTotal, new LinearLayout.LayoutParams(0, -2, 1f));
+        col.addView(times, new LinearLayout.LayoutParams(-1, -2));
+
+        FrameLayout controls = new FrameLayout(act);
+        controls.setClipChildren(false);
+        LinearLayout mid = new LinearLayout(act);
+        mid.setOrientation(LinearLayout.HORIZONTAL);
+        mid.setGravity(Gravity.CENTER);
+        mid.setClipChildren(false);
+        ImageView nPrev = iconBtn(R.drawable.ic_prev, 84, 22, false, new Runnable() {
+            @Override public void run() {
+                host.command("prev");
+            }
+        });
+        npPlay = iconBtn(R.drawable.ic_play, 104, 28, true, new Runnable() {
+            @Override public void run() {
+                host.command("toggle");
+            }
+        });
+        ImageView nNext = iconBtn(R.drawable.ic_next, 84, 22, false, new Runnable() {
+            @Override public void run() {
+                host.command("next");
+            }
+        });
+        tint(nPrev, false);
+        tint(npPlay, true);
+        tint(nNext, false);
+        addBtn(mid, nPrev, 84, 15);
+        addBtn(mid, npPlay, 104, 15);
+        addBtn(mid, nNext, 84, 15);
+        controls.addView(mid, new FrameLayout.LayoutParams(-1, px(112), Gravity.CENTER));
+
+        LinearLayout side = new LinearLayout(act);
+        side.setOrientation(LinearLayout.HORIZONTAL);
+        side.setGravity(Gravity.CENTER_VERTICAL);
+        side.setClipChildren(false);
+        ImageView nGo = iconBtn(R.drawable.ic_gofolder, 84, 22, false, new Runnable() {
+            @Override public void run() {
+                host.goToCurrentFolder();
+            }
+        });
+        npQueueBtn = iconBtn(R.drawable.ic_queue, 84, 22, false, new Runnable() {
+            @Override public void run() {
+                if (queueOpen) hideQueuePanel(true);
+                else showQueuePanel();
+            }
+        });
+        tint(nGo, false);
+        tint(npQueueBtn, false);
+        addBtn(side, nGo, 84, 9);
+        addBtn(side, npQueueBtn, 84, 9);
+        controls.addView(side, new FrameLayout.LayoutParams(-2, px(112), Gravity.END));
+        col.addView(controls, new LinearLayout.LayoutParams(-1, px(112)));
+        ctlPanel.addView(col, new FrameLayout.LayoutParams(-1, -2));
+        np.addView(ctlPanel, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
+
+        npTip = TvUi.text(act, "", 22, Color.BLACK, true);
+        npTip.setBackground(TvUi.round(Color.WHITE, 20));
+        npTip.setPadding(px(18), px(8), px(18), px(8));
+        npTip.setVisibility(View.GONE);
+        np.addView(npTip, new FrameLayout.LayoutParams(-2, -2));
+        tipNp(nGo, "Go to folder");
+        tipNp(npQueueBtn, "Up next");
     }
 
     View bar() {
@@ -352,20 +431,21 @@ final class TvPlayer {
         return open;
     }
 
-    boolean isAmbient() {
-        return ambient;
-    }
-
     boolean hasTrack() {
         return hasTrack;
     }
 
     boolean isSeek(View v) {
-        return v == seek;
+        return v == seek || v == npSeek;
     }
 
     void focusPlay() {
-        btnPlay.requestFocus();
+        (open ? npPlay : btnPlay).requestFocus();
+    }
+
+    /** A TV action (play a folder, pick a song) asked for playback: open the full page as soon as it starts. */
+    void expectPlayback() {
+        autoOpen = true;
     }
 
     boolean inLastQueueRow(View f) {
@@ -444,16 +524,43 @@ final class TvPlayer {
         boolean on = Boolean.TRUE.equals(b.getTag());
         GradientDrawable d = new GradientDrawable();
         d.setShape(GradientDrawable.OVAL);
-        d.setColor(f ? Color.WHITE : big ? 0x24FFFFFF : Color.TRANSPARENT);
+        d.setColor(f ? Color.WHITE : tinted.contains(b) ? (big ? 0x33FFFFFF : 0x1AFFFFFF)
+                : big ? 0x24FFFFFF : Color.TRANSPARENT);
         b.setBackground(d);
         b.setColorFilter(f ? (on ? 0xFFD4153A : Color.BLACK) : on ? TvUi.ACCENT : Color.WHITE,
                 PorterDuff.Mode.SRC_IN);
     }
 
-    private void setOn(ImageView b, boolean on, boolean big) {
-        if (Boolean.valueOf(on).equals(b.getTag())) return;
-        b.setTag(on);
+    /** Buttons on the full page have a faint round background even without the focus. */
+    private void tint(ImageView b, boolean big) {
+        tinted.add(b);
         styleBtn(b, big);
+    }
+
+    /** Label above a full-page button while it has the focus. */
+    private void tipNp(final View btn, final String label) {
+        final View.OnFocusChangeListener old = btn.getOnFocusChangeListener();
+        btn.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override public void onFocusChange(View v, boolean f) {
+                if (old != null) old.onFocusChange(v, f);
+                if (!f) {
+                    npTip.setVisibility(View.GONE);
+                    return;
+                }
+                npTip.setText(label);
+                npTip.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+                int[] a = new int[2], b = new int[2];
+                v.getLocationInWindow(a);
+                np.getLocationInWindow(b);
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) npTip.getLayoutParams();
+                int w = npTip.getMeasuredWidth();
+                lp.leftMargin = Math.max(0, Math.min(a[0] - b[0] + v.getWidth() / 2 - w / 2,
+                        np.getWidth() - w - px(20)));
+                lp.topMargin = a[1] - b[1] - px(64);
+                npTip.setLayoutParams(lp);
+                npTip.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     /** Left/Right on the seek line jump 10 seconds; the media keys use the same. */
@@ -462,7 +569,9 @@ final class TvPlayer {
         int to = Math.max(0, Math.min(dur, pos + deltaMs));
         pos = to;
         seek.setFraction(to / (float) dur);
+        npSeek.setFraction(to / (float) dur);
         timeView.setText(TvUi.fmt(to) + " / " + TvUi.fmt(dur));
+        npTime.setText(TvUi.fmt(to));
         host.command("seek", "ms", String.valueOf(to));
         host.toast((deltaMs > 0 ? "+10s  " : "−10s  ") + TvUi.fmt(to));
     }
@@ -481,9 +590,6 @@ final class TvPlayer {
         playing = st.optBoolean("playing");
         pos = st.optInt("pos", 0);
         dur = st.optInt("dur", 0);
-        shuffleOn = st.optBoolean("shuffle");
-        repeatMode = st.optString("repeat", "off");
-        repeatOn = !"off".equals(repeatMode);
         int upnext = st.optInt("upnext", 0);
         if (!has) {
             id = -1;
@@ -494,10 +600,16 @@ final class TvPlayer {
             bindTrack(idx.tracks.get(nid), idx);
         }
         btnPlay.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
-        setOn(btnShuffle, shuffleOn, false);
-        setOn(btnRepeat, repeatOn, false);
+        npPlay.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
         seek.setFraction(dur > 0 ? pos / (float) dur : 0f);
+        npSeek.setFraction(dur > 0 ? pos / (float) dur : 0f);
         timeView.setText(TvUi.fmt(pos) + " / " + TvUi.fmt(dur));
+        npTime.setText(TvUi.fmt(pos));
+        npTotal.setText(TvUi.fmt(dur));
+        if (autoOpen) {
+            autoOpen = false;
+            openNp(false);
+        }
         curDur.setText(TvUi.fmt(dur));
         if (labelEq != null) labelEq.setRunning(playing);
         syncSpin();
@@ -515,13 +627,14 @@ final class TvPlayer {
         TvArt.load(act, barArt, t, R.drawable.ic_note);
         npTitle.setText(t.title);
         npArtist.setText(who);
+        npKick.setText(("Playing from \u2022 " + lastSegment(t.folder)).toUpperCase());
         fromView.setText("Playing from\n" + lastSegment(t.folder));
         curTitle.setText(t.title);
         curSub.setText(who);
         TvArt.load(act, curArt, t, R.drawable.ic_note);
         final int forId = id;
         showArtPlaceholder();
-        TvArt.lookup(act, t, px(560), new TvArt.Result() {
+        TvArt.lookup(act, t, px(440), new TvArt.Result() {
             @Override public void done(Bitmap b) {
                 if (forId != id) return;
                 showNpArt(t, b);
@@ -547,14 +660,14 @@ final class TvPlayer {
         record = null;
         labelEq = null;
         if (b != null) {
-            TvUi.ArtView a = new TvUi.ArtView(act, px(560), false, 14);
+            TvUi.ArtView a = new TvUi.ArtView(act, px(440), false, 14);
             a.showBitmap(b);
-            artHolder.addView(a, new FrameLayout.LayoutParams(px(560), px(560)));
+            artHolder.addView(a, new FrameLayout.LayoutParams(px(440), px(440)));
             animateTint(dominant(b, TvArt.key(t)));
         } else {
             int color = hueColor(TvUi.hash(TvArt.key(t)));
             record = new RecordView(act, color);
-            FrameLayout.LayoutParams rp = new FrameLayout.LayoutParams(px(540), px(540), Gravity.CENTER);
+            FrameLayout.LayoutParams rp = new FrameLayout.LayoutParams(px(420), px(420), Gravity.CENTER);
             artHolder.addView(record, rp);
             labelEq = new TvUi.EqView(act, 5, 0xEBFFFFFF);
             labelEq.setRunning(playing);
@@ -660,19 +773,22 @@ final class TvPlayer {
     void openNp(final boolean toQueue) {
         if (!hasTrack || open) return;
         open = true;
+        np.setAlpha(0f);
+        np.setScaleX(1.03f);
+        np.setScaleY(1.03f);
         np.setVisibility(View.VISIBLE);
-        np.setTranslationY(np.getHeight() > 0 ? np.getHeight() : px(950));
-        np.animate().translationY(0).setDuration(420).setInterpolator(new DecelerateInterpolator(2f)).start();
+        np.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(500)
+                .setInterpolator(new DecelerateInterpolator(2f)).start();
         host.npOpened(true);
         lastQueueId = id;
         lastUpnext = -1;
         refreshQueue();
         syncSpin();
-        bar.postDelayed(new Runnable() {
+        showCtl();
+        np.postDelayed(new Runnable() {
             @Override public void run() {
-                View first = toQueue ? queueList.getChildAt(0) : null;
-                if (first != null) first.requestFocus();
-                else btnPlay.requestFocus();
+                if (toQueue) showQueuePanel();
+                else npPlay.requestFocus();
             }
         }, 140);
     }
@@ -680,27 +796,94 @@ final class TvPlayer {
     void closeNp() {
         if (!open) return;
         open = false;
-        setAmbient(false);
+        np.removeCallbacks(hideCtlRun);
+        queueOpen = false;
+        qpanel.setVisibility(View.INVISIBLE);
+        qpanel.setTranslationX(px(800));
         host.npOpened(false);
-        np.animate().translationY(np.getHeight()).setDuration(300)
-                .setInterpolator(new DecelerateInterpolator()).withEndAction(new Runnable() {
-                    @Override public void run() {
-                        if (!open) np.setVisibility(View.GONE);
-                    }
-                }).start();
+        np.animate().alpha(0f).setDuration(300).withEndAction(new Runnable() {
+            @Override public void run() {
+                if (!open) np.setVisibility(View.GONE);
+            }
+        }).start();
         syncSpin();
         info.requestFocus();
     }
 
-    /** Ambient mode: only the cover and title stay; the rest fades out until a key is pressed. */
-    void setAmbient(boolean on) {
-        if (ambient == on) return;
-        ambient = on;
-        float a = on ? 0f : 1f;
-        qpanel.animate().alpha(a).setDuration(1400).start();
-        bar.animate().alpha(a).setDuration(1400).start();
-        nleft.animate().translationX(on ? px(190) : 0f).scaleX(on ? 1.08f : 1f).scaleY(on ? 1.08f : 1f)
-                .setDuration(on ? 3000 : 400).start();
+    /** Back on the full page: closes Up next first, then the page. */
+    boolean onBack() {
+        if (!open) return false;
+        if (queueOpen) hideQueuePanel(true);
+        else closeNp();
+        return true;
+    }
+
+    /** Controls visible: they fade in and the song moves up; they hide again after CTL_MS. */
+    private void showCtl() {
+        ctlShown = true;
+        np.removeCallbacks(hideCtlRun);
+        np.postDelayed(hideCtlRun, CTL_MS);
+        ctlPanel.animate().alpha(1f).translationY(0).setDuration(350).start();
+        mainCol.animate().translationY(0).setDuration(700).start();
+    }
+
+    private void hideCtl() {
+        if (!open) return;
+        ctlShown = false;
+        if (queueOpen) {
+            hideQueuePanel(false);
+            npPlay.requestFocus();
+        }
+        ctlPanel.animate().alpha(0f).translationY(px(46)).setDuration(700).start();
+        mainCol.animate().translationY(px(125)).setDuration(900).start();
+    }
+
+    /**
+     * Called for every key press. On the full page a D-pad or OK press with the controls hidden only
+     * brings the controls back (returns true: the key is used up); other keys also keep them visible.
+     */
+    boolean onUserKey(int keyCode) {
+        if (!open) return false;
+        boolean wasHidden = !ctlShown;
+        showCtl();
+        if (!wasHidden) return false;
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void showQueuePanel() {
+        queueOpen = true;
+        refreshQueue();
+        qpanel.setVisibility(View.VISIBLE);
+        qpanel.animate().translationX(0).setDuration(400).setInterpolator(new DecelerateInterpolator(2f)).start();
+        np.postDelayed(new Runnable() {
+            @Override public void run() {
+                View first = queueList.getChildAt(0);
+                if (first != null) first.requestFocus();
+                else npQueueBtn.requestFocus();
+            }
+        }, 220);
+    }
+
+    private void hideQueuePanel(boolean refocus) {
+        if (!queueOpen) return;
+        queueOpen = false;
+        qpanel.animate().translationX(px(800)).setDuration(300).withEndAction(new Runnable() {
+            @Override public void run() {
+                if (!queueOpen) qpanel.setVisibility(View.INVISIBLE);
+            }
+        }).start();
+        if (refocus) npQueueBtn.requestFocus();
     }
 
     // ---- queue ----------------------------------------------------------------------------

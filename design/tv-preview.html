@@ -121,14 +121,15 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 .vnum{min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
 #bar.paused .eq i{animation-play-state:paused}
 /* now playing page (inside the content area; rail and bar stay) */
-#np{position:absolute;left:360px;right:0;top:0;bottom:130px;z-index:5;background:#050505;transform:translateY(100%);transition:transform .45s cubic-bezier(.2,.8,.2,1);display:flex;padding:70px 90px 0 110px;gap:80px;overflow:hidden}
-#np.open{transform:none}
+#np{position:absolute;inset:0;z-index:50;background:#050505;opacity:0;visibility:hidden;transform:scale(1.03);transition:opacity .5s,transform .7s cubic-bezier(.2,.8,.2,1),visibility 0s .7s;overflow:hidden}
+#np.open{opacity:1;visibility:visible;transform:none;transition:opacity .5s,transform .7s cubic-bezier(.2,.8,.2,1)}
 #np .bgn{position:absolute;inset:0;background:radial-gradient(1100px 800px at 25% 40%,hsl(var(--h) 60% 26%) 0%,transparent 70%),radial-gradient(900px 700px at 100% 100%,hsl(calc(var(--h) + 50) 55% 14%) 0%,transparent 70%),#060606}
-#np>*{position:relative}
-.nleft{width:600px;flex:none;display:flex;flex-direction:column;align-items:center;transition:transform 6s ease-out}
-.nart{width:560px;height:560px;display:grid;place-items:center}
-.cover{width:560px;height:560px;border-radius:14px;box-shadow:0 40px 100px rgba(0,0,0,.7)}
-.rec{width:540px;height:540px;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#101010 0 3px,#171717 3px 6px),#111;box-shadow:0 40px 100px rgba(0,0,0,.7),inset 0 0 0 8px #0b0b0b;display:grid;place-items:center;animation:spin 7s linear infinite;animation-play-state:paused;position:relative}
+#np>*:not(.bgn){z-index:1}
+.npmain{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:0;padding:0 200px 60px;transition:padding .9s cubic-bezier(.2,.8,.2,1)}
+#np.ctl .npmain{padding-bottom:310px}
+.nart{width:440px;height:440px;flex:none;display:grid;place-items:center}
+.cover{width:440px;height:440px;border-radius:14px;box-shadow:0 40px 100px rgba(0,0,0,.7)}
+.rec{width:420px;height:420px;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#101010 0 3px,#171717 3px 6px),#111;box-shadow:0 40px 100px rgba(0,0,0,.7),inset 0 0 0 8px #0b0b0b;display:grid;place-items:center;animation:spin 7s linear infinite;animation-play-state:paused;position:relative}
 .rec::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 20deg,transparent 0 20%,rgba(255,255,255,.07) 25%,transparent 32% 70%,rgba(255,255,255,.06) 75%,transparent 82%)}
 .playing .rec{animation-play-state:running}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -136,10 +137,26 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 .lab::after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:#0a0a0a;top:50%;left:50%;margin:-10px 0 0 -10px}
 .lab .eq{height:90px;width:110px;gap:8px;position:relative;z-index:1;margin-top:-130px}
 .lab .eq i{width:12px;background:rgba(255,255,255,.92);border-radius:4px}
-.ntitle{text-align:center;margin-top:34px;width:100%}
-.ntitle h1{font-size:52px;margin:0 0 8px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ntitle .a{font-size:32px;color:#d8d8dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.qpanel{flex:1;min-width:0;display:flex;flex-direction:column;padding-top:6px;transition:opacity 1.4s}
+.ninfo{flex:none;width:100%;max-width:1400px;margin-top:30px}
+.ninfo .kick{font-size:26px;letter-spacing:3px;color:rgba(255,255,255,.62);text-transform:uppercase;font-weight:600}
+.ninfo h1{font-size:68px;line-height:1.2;margin:10px 0 8px;letter-spacing:-1.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ninfo .a{font-size:42px;color:#e0e0e4}
+.ninfo .al{display:none}
+/* player controls: shown for 15 s after the song starts or after any button, then hidden */
+.npctl{position:absolute;left:0;right:0;bottom:0;padding:150px 130px 56px;background:linear-gradient(transparent,rgba(0,0,0,.88) 62%);transition:opacity .8s,transform .8s}
+#np:not(.ctl) .npctl{opacity:0;transform:translateY(46px);pointer-events:none}
+.npctl .seekz{position:relative;left:auto;right:auto;top:auto;height:44px;margin-bottom:4px}
+.npctl .times{display:flex;justify-content:space-between;font-size:26px;color:#cfcfd4;font-variant-numeric:tabular-nums}
+.npctl .row2{display:flex;align-items:center;justify-content:center;gap:30px;margin-top:14px;position:relative}
+.npctl .cbtn{background:rgba(255,255,255,.1)}
+.npctl .cbtn.focus{background:#fff;color:#000}
+.npctl .cbtn.big{width:104px;height:104px;background:rgba(255,255,255,.2);color:#fff}
+.npctl .cbtn.big.focus{background:#fff;color:#000;box-shadow:none;transform:scale(1.1)}
+.npctl .side{position:absolute;right:0;top:50%;transform:translateY(-50%);display:flex;gap:18px}
+.npctl .cbtn[data-label].focus::after{top:auto;bottom:calc(100% + 16px)}
+/* Up next slides in from the right, only while the controls are shown */
+#qside{position:absolute;top:0;right:0;bottom:0;width:800px;padding:80px 60px 230px;background:rgba(14,14,16,.95);backdrop-filter:blur(30px);transform:translateX(100%);transition:transform .45s cubic-bezier(.2,.8,.2,1);box-shadow:-40px 0 100px rgba(0,0,0,.6)}
+#np.q #qside{transform:none}
 .qtabs{display:flex;gap:44px;font-size:28px;font-weight:600;letter-spacing:1.5px;color:#9a9aa0;border-bottom:1px solid #2c2c2c;padding-bottom:16px}
 .qtabs b{color:#fff;border-bottom:4px solid #fff;padding-bottom:14px;font-weight:600}
 .qfrom{font-size:23px;color:var(--muted);margin:22px 0 4px 8px}
@@ -147,7 +164,7 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 #qlist{height:640px;overflow:hidden;scroll-behavior:smooth;margin-top:12px;padding-bottom:30px}
 #qlist .row{height:94px;padding:0 14px;gap:22px}#qlist .row .th{width:66px;height:66px}#qlist .row .t{font-size:28px}#qlist .row .s{font-size:22px}
 /* overlays */
-#menu{position:absolute;inset:0;z-index:40;display:none;place-items:center;background:rgba(0,0,0,.6)}
+#menu{position:absolute;inset:0;z-index:60;display:none;place-items:center;background:rgba(0,0,0,.6)}
 #menu.open{display:grid;animation:fade .18s}
 @keyframes fade{from{opacity:0}}
 #menu .box{width:760px;background:#232326;border-radius:30px;padding:30px;box-shadow:0 40px 120px rgba(0,0,0,.8);animation:pop .22s cubic-bezier(.2,.8,.2,1)}
@@ -170,7 +187,7 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 #sres{position:absolute;left:1190px;top:236px;width:600px;display:none}
 #sres .hh{font-size:24px;color:var(--muted);margin:0 0 10px 12px;letter-spacing:1px;text-transform:uppercase}
 #sres .row{height:92px;padding:0 16px;gap:18px}#sres .row .th{width:64px;height:64px}#sres .row .t{font-size:28px}#sres .row .s{font-size:21px}
-#toast{position:absolute;left:50%;bottom:170px;transform:translate(-50%,40px);opacity:0;background:#fff;color:#000;padding:20px 38px;border-radius:40px;font-size:28px;font-weight:600;z-index:50;transition:all .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 20px 60px rgba(0,0,0,.6);white-space:nowrap}
+#toast{position:absolute;left:50%;bottom:170px;transform:translate(-50%,40px);opacity:0;background:#fff;color:#000;padding:20px 38px;border-radius:40px;font-size:28px;font-weight:600;z-index:70;transition:all .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 20px 60px rgba(0,0,0,.6);white-space:nowrap}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 #letter{position:absolute;left:50%;top:46%;width:260px;height:260px;margin:-130px 0 0 -130px;border-radius:50%;background:rgba(0,0,0,.72);backdrop-filter:blur(12px);display:grid;place-items:center;font-size:150px;font-weight:700;z-index:45;opacity:0;transition:opacity .2s;pointer-events:none}
 #letter.on{opacity:1}
@@ -192,7 +209,7 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
   <div id="toast"></div>
   <div id="letter"></div>
 </div></div>
-<div id="legend"><span><b>D-pad</b> (arrows) move</span><span><b>OK</b> (Enter) select</span><span><b>Hold OK</b> (or Menu key, M) song menu</span><span><b>Back</b> (Esc / Backspace)</span><span><b>Play/Pause</b> key (Space)</span><span><b>Next / Prev</b> keys (N / P)</span><span><b>Ch+ / Ch-</b> jump a page (PgUp / PgDn)</span><span class="legend-btn" id="phoneBtn"><b style="color:#ff7d93">F</b> = pretend the phone changed the song</span></div>
+<div id="legend"><span><b>D-pad</b> (arrows) move</span><span><b>OK</b> (Enter) select</span><span><b>Hold OK</b> (or Menu key, M) song menu</span><span><b>Back</b> (Esc / Backspace)</span><span><b>Play/Pause</b> key (Space)</span><span><b>Next / Prev</b> keys (N / P)</span><span><b>Ch+ / Ch-</b> jump a page (PgUp / PgDn)</span><span>Full-page player: controls hide after 15 s, any button brings them back</span><span class="legend-btn" id="phoneBtn"><b style="color:#ff7d93">F</b> = pretend the phone changed the song</span></div>
 <script>
 const $=s=>document.querySelector(s);
 const ICON={
@@ -248,8 +265,8 @@ function setFocus(el,noScroll){if(!el)return;if(focusEl)focusEl.classList.remove
  if(el.closest('#rail')&&el.dataset.a&&el.dataset.a.startsWith('tab:')){const i=+el.dataset.a.split(':')[1];if(i!==S.tab||S.path)railT=setTimeout(()=>{if(focusEl===el)activate(el,true)},320)}
  if(!noScroll){const sc=el.closest('#view,#qlist');if(sc){const r=el.getBoundingClientRect(),c=sc.getBoundingClientRect(),k=stageScale();const top=(r.top-c.top)/k,bot=(r.bottom-c.top)/k,H=sc.clientHeight;if(top<30||bot>H-30)sc.scrollTop+=((top+bot)/2-H/2)}}}
 function npOpen(){return $('#np').classList.contains('open')}
-function roots(){if($('#menu').classList.contains('open'))return[$('#menu')];if($('#search').classList.contains('open'))return[$('#search')];if(npOpen())return[$('#np'),$('#bar')];return[$('#rail'),$('#top'),$('#view'),$('#bar')]}
-function cands(){return roots().flatMap(r=>[...r.querySelectorAll('[data-f]')]).filter(e=>{const b=e.getBoundingClientRect();return b.width>0&&b.height>0})}
+function roots(){if($('#menu').classList.contains('open'))return[$('#menu')];if($('#search').classList.contains('open'))return[$('#search')];if(npOpen())return[$('#np')];return[$('#rail'),$('#top'),$('#view'),$('#bar')]}
+function cands(){const np=$('#np');return roots().flatMap(r=>[...r.querySelectorAll('[data-f]')]).filter(e=>{if(np.classList.contains('open')&&e.closest('#qside')&&!np.classList.contains('q'))return false;const b=e.getBoundingClientRect();return b.width>0&&b.height>0})}
 function move(d){const a=cands();if(!focusEl||!a.includes(focusEl)){setFocus(a[0]);return}
  const f=focusEl.getBoundingClientRect(),cx=f.left+f.width/2,cy=f.top+f.height/2;let best=null,bs=1e9;
  for(const e of a){if(e===focusEl)continue;const b=e.getBoundingClientRect(),x=b.left+b.width/2,y=b.top+b.height/2,dx=x-cx,dy=y-cy;let p,c;
@@ -277,24 +294,38 @@ function renderView(keep){const v=$('#view');let h='';const f=S.path&&S.path[S.p
 function renderBar(){const t=S.cur;$('#bar').className=S.playing?'':'paused';
  $('#bar').innerHTML=`<div class="seekz f" data-f data-seek data-a="seek"><div class="prog"><i id="mprog"></i><b id="mknob"></b></div></div>
  <div class="info f" data-f data-a="np">${art(t)}<div style="min-width:0"><div class="t">${t.title}</div><div class="s">${t.artist} · ${t.folder}</div></div></div>
- <div class="ctls"><div class="cbtn f ${S.shuffle?'on':''}" data-f data-a="shuffle">${ICON.shuf}</div><div class="cbtn f" data-f data-a="prev">${ICON.prev}</div><div class="cbtn big f" data-f data-a="toggle">${S.playing?ICON.pause:ICON.play}</div><div class="cbtn f" data-f data-a="next">${ICON.next}</div><div class="cbtn f ${S.rep?'on':''}" data-f data-a="repeat">${ICON.rep}</div></div>
+ <div class="ctls"><div class="cbtn f" data-f data-a="prev">${ICON.prev}</div><div class="cbtn big f" data-f data-a="toggle">${S.playing?ICON.pause:ICON.play}</div><div class="cbtn f" data-f data-a="next">${ICON.next}</div></div>
  <div class="right"><span id="mtime">0:00 / ${fmt(t.dur)}</span><div class="cbtn f" data-f data-label="Go to folder" data-a="gotofolder">${ICON.gof}</div><div class="cbtn f" data-f data-label="Up next" data-a="queue">${ICON.list}</div></div>`;
  tick()}
-function renderNP(){const t=S.cur,np=$('#np');np.style.setProperty('--h',t.h);np.className=(npOpen()?'open ':'')+(S.playing?'playing':'');
+function renderNP(){const t=S.cur,np=$('#np');np.style.setProperty('--h',t.h);
+ const keep=['open','ctl','q'].filter(c=>np.classList.contains(c));np.className=keep.join(' ')+(S.playing?' playing':'');
  const stg=t.art?art(t,'cover'):`<div class="rec"><div class="lab"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span></div></div>`;
- np.innerHTML=`<div class="bgn"></div><div class="nleft"><div class="nart">${stg}</div><div class="ntitle"><h1>${t.title}</h1><div class="a">${t.artist}</div></div></div>
- <div class="qpanel"><div class="qtabs"><b>UP NEXT</b></div><div class="qfrom">Playing from<b>${t.folder}</b></div><div id="qlist"><div class="row hl cur"><div class="th">${art(t)}</div><div class="mt"><div class="t">${t.title}</div><div class="s">${t.artist}</div></div><span class="eq"><i></i><i></i><i></i></span><div class="d">${fmt(t.dur)}</div></div>${S.up.map((x,i)=>`<div class="row f" data-f data-menu data-a="qplay:${i}"><div class="th">${art(x)}</div><div class="mt"><div class="t">${x.title}</div><div class="s">${x.artist}</div></div><div class="d">${fmt(x.dur)}</div></div>`).join('')}</div></div>`}
-function tick(){const t=S.cur,p=S.pos/t.dur*100;const a=$('#mprog'),b=$('#mknob'),d=$('#mtime');if(a){a.style.width=p+'%';b.style.left=p+'%';d.textContent=fmt(S.pos)+' / '+fmt(t.dur)}}
+ np.innerHTML=`<div class="bgn"></div>
+ <div class="npmain"><div class="nart">${stg}</div><div class="ninfo"><div class="kick">Playing from · ${t.folder}</div><h1>${t.title}</h1><div class="a">${t.artist}</div><div class="al">${t.folder}</div></div></div>
+ <div class="npctl"><div class="seekz f" data-f data-seek data-a="seek"><div class="prog"><i id="npprog"></i><b id="npknob"></b></div></div><div class="times"><span id="nptl">0:00</span><span>${fmt(t.dur)}</span></div>
+  <div class="row2"><div class="cbtn f" data-f data-a="prev">${ICON.prev}</div><div class="cbtn big f" data-f data-a="toggle">${S.playing?ICON.pause:ICON.play}</div><div class="cbtn f" data-f data-a="next">${ICON.next}</div>
+   <div class="side"><div class="cbtn f" data-f data-label="Go to folder" data-a="gotofolder">${ICON.gof}</div><div class="cbtn f" data-f data-label="Up next" data-a="queue">${ICON.list}</div></div></div></div>
+ <aside id="qside"><div class="qtabs"><b>UP NEXT</b></div><div class="qfrom">Playing from<b>${t.folder}</b></div><div id="qlist"><div class="row hl cur"><div class="th">${art(t)}</div><div class="mt"><div class="t">${t.title}</div><div class="s">${t.artist}</div></div><span class="eq"><i></i><i></i><i></i></span><div class="d">${fmt(t.dur)}</div></div>${S.up.map((x,i)=>`<div class="row f" data-f data-menu data-a="qplay:${i}"><div class="th">${art(x)}</div><div class="mt"><div class="t">${x.title}</div><div class="s">${x.artist}</div></div><div class="d">${fmt(x.dur)}</div></div>`).join('')}</div></aside>`}
+function tick(){const t=S.cur,p=S.pos/t.dur*100;const a=$('#mprog'),b=$('#mknob'),d=$('#mtime');if(a){a.style.width=p+'%';b.style.left=p+'%';d.textContent=fmt(S.pos)+' / '+fmt(t.dur)}
+ const na=$('#npprog'),nb=$('#npknob'),nt=$('#nptl');if(na){na.style.width=p+'%';nb.style.left=p+'%';nt.textContent=fmt(S.pos)}}
 /* ---------- actions ---------- */
-function setCur(t,ctx){S.cur=t;S.pos=0;S.playing=true;if(ctx){const i=ctx.indexOf(t);S.up=ctx.slice(i+1)}
- renderBar();renderNP();if(S.path||S.tab===2)renderViewKeep()}
+function setCur(t,ctx){const was=focusEl&&focusEl.closest('#np')&&focusEl.getAttribute('data-a');S.cur=t;S.pos=0;S.playing=true;if(ctx){const i=ctx.indexOf(t);S.up=ctx.slice(i+1)}
+ renderBar();renderNP();if(S.path||S.tab===2)renderViewKeep();
+ if(was){const n=[...document.querySelectorAll('#np [data-f]')].find(e=>e.getAttribute('data-a')===was);if(n)setFocus(n,true)}}
 function renderViewKeep(){const a=focusEl&&focusEl.getAttribute('data-a'),k=$('#view').scrollTop,was=focusEl&&focusEl.closest('#view');renderView(true);$('#view').scrollTop=k;if(a&&was){const n=[...document.querySelectorAll('#view [data-f]')].find(e=>e.getAttribute('data-a')===a);if(n)setFocus(n,true)}}
 function toast(m){const e=$('#toast');e.textContent=m;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1900)}
 function open(id,on){$(id).classList.toggle('open',on)}
 function refocusBar(a){setFocus(document.querySelector(`#bar [data-a=${a}]`),true)}
-function openNP(on,toQueue){open('#np',on);wakeAmbient();
- if(on){renderNP();setFocus((toQueue&&document.querySelector('#qlist [data-f]'))||document.querySelector('#bar [data-a=toggle]'),true)}
- else refocusBar('np')}
+let ctlT=null;
+const CTL_MS=15000; /* controls stay 15 s (the app will use 15 s; 10-15 s at the start, hidden after 15-30 s) */
+function showCtl(){const np=$('#np');np.classList.add('ctl');clearTimeout(ctlT);ctlT=setTimeout(hideCtl,CTL_MS)}
+function hideCtl(){const np=$('#np');if($('#menu').classList.contains('open'))return showCtl();np.classList.remove('ctl','q')}
+function openNP(on,toQueue){const np=$('#np');clearTimeout(ctlT);
+ if(on){np.classList.remove('q');renderNP();np.classList.add('open');showCtl();
+  if(toQueue){np.classList.add('q');setFocus(np.querySelector('#qlist [data-f]')||np.querySelector('[data-a=toggle]'),true)}
+  else setFocus(np.querySelector('[data-a=toggle]'),true)}
+ else{np.classList.remove('open','ctl','q');refocusBar('np')}}
+function closeQ(){const np=$('#np');np.classList.remove('q');setFocus(np.querySelector('[data-a=queue]'),true)}
 let menuFrom=null;
 function openMenu(el){const a=el.getAttribute('data-a').split(':');let t,items;
  if(a[0]==='qplay'){t=S.up[+a[1]];items=[['qtop','play','Play now'],['qrm','del','Remove from queue']]}
@@ -305,7 +336,7 @@ function closeMenu(){open('#menu',false);if(menuFrom&&document.contains(menuFrom
 function menuDo(k){const m=menuFrom,t=m.t;closeMenu();
  if(k==='pn'){S.up.unshift(t);toast('Will play next: '+t.title)}
  if(k==='aq'){S.up.push(t);toast('Added to queue: '+t.title)}
- if(k==='gf'){const f=t.fo;if(npOpen()){open('#np',false)}S.tab=0;S.path=FOLD.includes(f)?[f]:[FOLD.find(x=>x.subs&&x.subs.includes(f)),f];renderRail();renderView();setFocus($('#view .row.cur')||$('#view .cbtn.big'),true);toast('Folder: '+f.n)}
+ if(k==='gf'){const f=t.fo;if(npOpen()){openNP(false)}S.tab=0;S.path=FOLD.includes(f)?[f]:[FOLD.find(x=>x.subs&&x.subs.includes(f)),f];renderRail();renderView();setFocus($('#view .row.cur')||$('#view .cbtn.big'),true);toast('Folder: '+f.n)}
  if(k==='qrm'){S.up.splice(+m.a[1],1);renderNP();setFocus($('#qlist [data-f]'),true);toast('Removed from queue')}
  if(k==='qtop'){const x=S.up.splice(+m.a[1],1)[0];S.up.unshift(x);setCur(S.up.shift());setFocus($('#qlist [data-f]'),true)}
  renderNP()}
@@ -318,22 +349,20 @@ function activate(el,quiet){if(!el)return;const a=el.getAttribute('data-a')||'',
  case'fold':{const f=FOLD[+p[1]];if($('#search').classList.contains('open'))open('#search',false);S.path=[f];renderRail();renderView();break}
  case'open':{const f=S.path[0].subs[+p[1]];S.path.push(f);renderView();break}
  case'artist':{const i=+p[1],a=ARTISTS[i],ss=TR.filter(t=>t.artist===a);S.path=[{n:a,h:i*55,art:1,songs:ss,cnt:ss.length+' songs',isArtist:1}];renderView();break}
- case'song':{const t=TR[+p[1]];if($('#search').classList.contains('open'))open('#search',false);const ctx=p[2]==='f'?S.path[S.path.length-1].songs:TR;setCur(t,ctx);break}
- case'playf':{const f=S.path[S.path.length-1];setCur(f.songs[0],f.songs);toast('Playing '+f.n);break}
- case'shufflef':{const f=S.path[S.path.length-1],c=[...f.songs].sort(()=>rnd()-.5);setCur(c[0],c);S.shuffle=true;renderBar();toast('Shuffling '+f.n);break}
+ case'song':{const t=TR[+p[1]];if($('#search').classList.contains('open'))open('#search',false);const ctx=p[2]==='f'?S.path[S.path.length-1].songs:TR;setCur(t,ctx);openNP(true);break}
+ case'playf':{const f=S.path[S.path.length-1];setCur(f.songs[0],f.songs);openNP(true);break}
+ case'shufflef':{const f=S.path[S.path.length-1],c=[...f.songs].sort(()=>rnd()-.5);setCur(c[0],c);S.shuffle=true;openNP(true);break}
  case'queuef':{const f=S.path[S.path.length-1];S.up.push(...f.songs);renderNP();toast('Added '+f.songs.length+' songs to the queue');break}
- case'playall':setCur(TR[0],TR);break;
- case'shuffleall':{const c=[...TR].sort(()=>rnd()-.5);setCur(c[0],c);S.shuffle=true;renderBar();toast('Shuffling all songs');break}
+ case'playall':setCur(TR[0],TR);openNP(true);break;
+ case'shuffleall':{const c=[...TR].sort(()=>rnd()-.5);setCur(c[0],c);S.shuffle=true;openNP(true);break}
  case'search':openSearch();break;
  case'np':openNP(true);break;
- case'queue':openNP(true,true);break;
+ case'queue':if(npOpen()){const np=$('#np');if(np.classList.contains('q'))closeQ();else{np.classList.add('q');setFocus(np.querySelector('#qlist [data-f]'),true)}}else openNP(true,true);break;
  case'fv':{S.fview=p[1];renderView();setFocus(document.querySelector('#view .sg.on'),true);toast(p[1]==='grid'?'Folder view':'List view');break}
- case'gotofolder':{const t=S.cur,f=t.fo;if(npOpen())open('#np',false);S.tab=0;S.path=FOLD.includes(f)?[f]:[FOLD.find(x=>x.subs&&x.subs.includes(f)),f];renderRail();renderView();setFocus($('#view .row.cur')||$('#view .cbtn.big'),true);toast('Folder of the playing song: '+f.n);break}
+ case'gotofolder':{const t=S.cur,f=t.fo;if(npOpen())openNP(false);S.tab=0;S.path=FOLD.includes(f)?[f]:[FOLD.find(x=>x.subs&&x.subs.includes(f)),f];renderRail();renderView();setFocus($('#view .row.cur')||$('#view .cbtn.big'),true);toast('Folder of the playing song: '+f.n);break}
  case'gotoparent':{if(S.path&&S.path.length>1){const from=S.path.pop().n;renderView();toast('Parent folder of '+from+': '+S.path[S.path.length-1].n)}else if(S.path){const from=S.path[0].n;S.path=null;S.tab=0;renderRail();renderView();toast('Parent of '+from+': all folders')}break}
- case'toggle':S.playing=!S.playing;renderBar();renderNP();refocusBar('toggle');break;
+ case'toggle':S.playing=!S.playing;renderBar();renderNP();if(npOpen())setFocus(document.querySelector('#np [data-a=toggle]'),true);else refocusBar('toggle');break;
  case'next':next();break;case'prev':prev();break;
- case'shuffle':S.shuffle=!S.shuffle;renderBar();refocusBar('shuffle');toast(S.shuffle?'Shuffle on':'Shuffle off');break;
- case'repeat':S.rep=(S.rep+1)%3;renderBar();refocusBar('repeat');toast(['Repeat off','Repeat all','Repeat one'][S.rep]);break;
  case'vup':case'vdn':S.vol=Math.max(1,Math.min(30,S.vol+(p[0]==='vup'?1:-1)));$('#vnum').textContent=S.vol;toast('Volume '+S.vol);break;
  case'qplay':{const i=+p[1];const t=S.up[i];S.up=S.up.slice(i+1);setCur(t);setFocus($('#qlist [data-f]'),true);break}
  case'm':menuDo(p[1]);break;
@@ -354,12 +383,15 @@ function sdraw(){$('#sbox').innerHTML=sq?`<span>${sq}</span><i class="caret"></i
 function skey(k){if(k==='←')sq=sq.slice(0,-1);else sq+=k;sdraw()}
 /* ---------- keys ---------- */
 let hold=null,held=false,rep=0,idleT=null;
-function wakeAmbient(){const st=$('#stage');const was=st.classList.contains('amb');st.classList.remove('amb');clearTimeout(idleT);idleT=setTimeout(()=>{if(npOpen()&&!$('#menu').classList.contains('open'))st.classList.add('amb')},20000);return was}
+function wakeAmbient(){return false}
+let swallowUp=false;
 function phoneChange(){let t;do{t=TR[Math.floor(Math.random()*TR.length)]}while(t===S.cur);setCur(t,TR);toast('Phone changed the song: '+t.title)}
 $('#phoneBtn').addEventListener('click',phoneChange);
 function jump(d,n){for(let i=0;i<n;i++)move(d)}
 addEventListener('keydown',e=>{const k=e.key;
- if(wakeAmbient()){e.preventDefault();return}
+ if(npOpen()){const np=$('#np'),hidden=!np.classList.contains('ctl');showCtl();
+  /* with the controls hidden, the first D-pad / OK press only brings them back */
+  if(hidden&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter'].includes(k)){e.preventDefault();if(k==='Enter')swallowUp=true;return}}
  if(e.repeat)rep++;else rep=0;
  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter',' ','Backspace','Escape','PageUp','PageDown'].includes(k))e.preventDefault();
  if(k==='f'||k==='F'){phoneChange();return}
@@ -371,14 +403,14 @@ addEventListener('keydown',e=>{const k=e.key;
  else if(k===' ')activate({getAttribute:()=>'toggle'});
  else if(k==='n'||k==='N')next();else if(k==='p'||k==='P')prev();
  else if(k==='m'||k==='M'){if(focusEl&&focusEl.hasAttribute('data-menu'))openMenu(focusEl)}
- else if(k==='q'||k==='Q'){openNP(!npOpen(),true)}
+ else if(k==='q'||k==='Q'){activate({getAttribute:()=>'queue'})}
  else if(k==='Escape'||k==='Backspace'||k==='b'){back()}});
-addEventListener('keyup',e=>{if(e.key==='Enter'){clearTimeout(hold);if(!held)activate(focusEl);held=false}});
+addEventListener('keyup',e=>{if(e.key==='Enter'){clearTimeout(hold);if(swallowUp){swallowUp=false;return}if(!held)activate(focusEl);held=false}});
 addEventListener('click',e=>{const el=e.target.closest('[data-f]');if(el&&cands().includes(el)){setFocus(el,true);activate(el)}});
 function back(){
  if($('#menu').classList.contains('open'))return closeMenu();
  if($('#search').classList.contains('open')){open('#search',false);return setFocus(document.querySelector('[data-a=search]'),true)}
- if(npOpen())return openNP(false);
+ if(npOpen()){if($('#np').classList.contains('q'))return closeQ();return openNP(false)}
  if(S.path){S.path.pop();if(!S.path.length)S.path=null;renderView();return}
  if(S.tab!==0){S.tab=0;renderRail();renderView();return}
  toast('Press Back again to exit')}
