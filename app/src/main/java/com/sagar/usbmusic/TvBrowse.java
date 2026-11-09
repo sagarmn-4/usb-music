@@ -557,6 +557,11 @@ final class TvBrowse {
                 focusHero();
                 return true;
             }
+            // Same on the Folders page: Up from the first row goes to the Folder view / List view switch.
+            if (up && tab == 0 && stack.isEmpty() && segGrid != null && pos == list.getHeaderViewsCount()) {
+                focusSwitch();
+                return true;
+            }
             // Up and Down inside a list must never jump into the left rail: that would switch the
             // tab (and lose the open folder). The rail is only reached with Left.
             View n = f.focusSearch(up ? View.FOCUS_UP : View.FOCUS_DOWN);
@@ -1820,6 +1825,27 @@ final class TvBrowse {
         if (list == null) return;
         if (heroPlay != null) focusHero();
         else focusItem(0, COLS);
+    }
+
+    /** Scrolls the Folders page to the top and puts the focus on the half of the view switch that is on. */
+    private void focusSwitch() {
+        final ListView lv = list;
+        if (lv == null) return;
+        lv.smoothScrollToPositionFromTop(0, 0, 120);
+        final View seg = foldersAsList() ? segList : segGrid;
+        if (seg == null) return;
+        lv.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (lv != list) return;
+                if (!seg.requestFocus()) {
+                    lv.postDelayed(new Runnable() {
+                        @Override public void run() {
+                            if (lv == list) seg.requestFocus();
+                        }
+                    }, 200);
+                }
+            }
+        }, 260);
     }
 
     /** On a folder / album / artist page the remote starts on the big Play button. */
