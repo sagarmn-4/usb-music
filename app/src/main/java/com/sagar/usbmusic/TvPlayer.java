@@ -627,7 +627,7 @@ final class TvPlayer {
         TvArt.load(act, barArt, t, R.drawable.ic_note);
         npTitle.setText(t.title);
         npArtist.setText(who);
-        npKick.setText(("Playing from \u2022 " + lastSegment(t.folder)).toUpperCase());
+        npKick.setText(lastSegment(t.folder).toUpperCase());
         fromView.setText("Playing from\n" + lastSegment(t.folder));
         curTitle.setText(t.title);
         curSub.setText(who);

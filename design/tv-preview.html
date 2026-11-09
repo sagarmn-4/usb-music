@@ -63,11 +63,12 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 .cbtn[data-label].focus::after{content:attr(data-label);position:absolute;top:calc(100% + 14px);left:50%;transform:translateX(-50%);background:#fff;color:#000;font-size:22px;font-weight:600;padding:8px 18px;border-radius:20px;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 #bar .cbtn[data-label].focus::after{top:auto;bottom:calc(100% + 18px)}
 /* Folders page: view switch (label + icon) and list view */
-.ph{display:flex;align-items:center;justify-content:space-between;margin:6px 0 28px 0;padding-right:14px}
+.ph{position:relative;z-index:6;display:flex;align-items:center;justify-content:space-between;margin:6px 0 28px 0;padding-right:14px}
 .ph h1{margin:0 0 0 14px}
 .seg{display:flex;gap:12px;background:rgba(255,255,255,.06);padding:8px;border-radius:44px}
-.sg{height:68px;padding:0 30px;border-radius:34px;display:flex;align-items:center;gap:14px;font-size:27px;font-weight:600;color:#cfcfd4;transition:transform .16s ease-out,background .16s,color .16s,box-shadow .16s}
-.sg svg{width:32px;height:32px;fill:currentColor}
+.sg{position:relative;width:84px;height:68px;padding:0;border-radius:34px;display:flex;align-items:center;justify-content:center;gap:0;font-size:27px;font-weight:600;color:#cfcfd4;transition:transform .16s ease-out,background .16s,color .16s,box-shadow .16s}
+.sg svg{width:36px;height:36px;fill:currentColor}
+.sg.focus::after{content:attr(data-label);position:absolute;top:calc(100% + 16px);left:50%;transform:translateX(-50%);background:#fff;color:#000;font-size:22px;font-weight:600;padding:8px 18px;border-radius:20px;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;z-index:5}
 .sg.on{background:rgba(255,255,255,.18);color:#fff}
 .sg.focus{background:#fff;color:#000;transform:scale(1.06);box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .chev{font-size:46px;color:var(--muted);line-height:1;padding-right:6px}
@@ -194,6 +195,23 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 /* ambient mode on now playing */
 .amb #rail,.amb #top,.amb .qpanel,.amb #bar .ctls,.amb #bar .right,.amb #bar .info{opacity:0}
 .amb .nleft{transform:scale(1.07) translateX(150px)}
+.cred{margin-top:14px;padding:0 18px;font-size:19px;line-height:1.35;color:#8e8e94;letter-spacing:.3px}
+.cred span{display:block;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#6f6f75}
+.cred b{font-weight:500;color:#c6c6cc;font-size:21px}
+.logo.big{width:120px;height:120px}.logo.big i{border-left:40px solid #fff;border-top:24px solid transparent;border-bottom:24px solid transparent;margin-left:12px}
+#about{position:absolute;inset:0;z-index:55;background:rgba(0,0,0,.72);display:none;place-items:center}
+#about.open{display:grid;animation:fade .2s}
+.abox{width:900px;padding:56px 60px 50px;border-radius:36px;background:#1c1c1f;box-shadow:0 40px 120px rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;text-align:center;animation:pop .25s cubic-bezier(.2,.8,.2,1)}
+.abox h2{font-size:60px;margin:26px 0 6px;letter-spacing:-1px}
+.abox .ver{font-size:26px;color:var(--muted)}
+.who{margin-top:34px;padding:22px 44px;border-radius:24px;background:rgba(255,255,255,.07)}
+.who span{display:block;font-size:22px;letter-spacing:3px;text-transform:uppercase;color:#9a9aa0}
+.who b{display:block;font-size:46px;margin-top:8px;font-weight:600}
+.abox .note{font-size:26px;line-height:1.5;color:#b8b8be;margin:34px 0 36px}
+#splash{position:absolute;inset:0;z-index:90;background:radial-gradient(1200px 800px at 50% 40%,#2a0f17 0%,#050505 70%);display:grid;place-items:center;opacity:0;visibility:hidden;transition:opacity .8s,visibility 0s .8s}
+#splash.on{opacity:1;visibility:visible;transition:opacity .6s}
+.sbox{display:flex;flex-direction:column;align-items:center;text-align:center}
+.sbox h1{font-size:96px;margin:30px 0 40px;letter-spacing:-2px}
 </style>
 </head>
 <body>
@@ -206,6 +224,8 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
   <footer id="bar"></footer>
   <div id="search"></div>
   <div id="menu"></div>
+  <div id="about"></div>
+  <div id="splash"></div>
   <div id="toast"></div>
   <div id="letter"></div>
 </div></div>
@@ -230,6 +250,7 @@ const ICON={
  person:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V21h16v-2.5c0-3-5-4.5-8-4.5z"/></svg>',
  personc:'<svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V21h16v-2.5c0-3-5-4.5-8-4.5z"/></svg>',
  refresh:'<svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg>',
+ info:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg>',
  del:'<svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>',
  gof:'<svg viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8zM12 18v-4.2l-1.6 1.6L9 14l4-4 4 4-1.4 1.4-1.6-1.6V18z" fill-rule="evenodd"/></svg>',
  gridv:'<svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>',
@@ -253,7 +274,7 @@ const mins=a=>{const m=Math.round(a.reduce((x,t)=>x+t.dur,0)/60);return m+' minu
 function art(t,cls=''){const h=t.h;return `<div class="art ${cls}" style="background:linear-gradient(145deg,hsl(${h} 62% 52%),hsl(${h+45} 58% 26%))">${ICON.note.replace('<svg','<svg fill="#fff"')}</div>`}
 function folderTile(cls=''){return `<div class="art ftile ${cls}">${ICON.folder}</div>`}
 /* ---------- state ---------- */
-const S={fview:'grid',tab:0,path:null,cur:TR[2],playing:false,pos:75,up:TR.slice(3,12),shuffle:false,rep:0,vol:14};
+const S={credit:1,fview:'grid',tab:0,path:null,cur:TR[2],playing:false,pos:75,up:TR.slice(3,12),shuffle:false,rep:0,vol:14};
 const TABS=[['Folders','album'],['Albums','album'],['Songs','note'],['Artists','personc']];
 let focusEl=null,railT=null;
 function stageScale(){return $('#stage').getBoundingClientRect().width/1920}
@@ -265,7 +286,7 @@ function setFocus(el,noScroll){if(!el)return;if(focusEl)focusEl.classList.remove
  if(el.closest('#rail')&&el.dataset.a&&el.dataset.a.startsWith('tab:')){const i=+el.dataset.a.split(':')[1];if(i!==S.tab||S.path)railT=setTimeout(()=>{if(focusEl===el)activate(el,true)},320)}
  if(!noScroll){const sc=el.closest('#view,#qlist');if(sc){const r=el.getBoundingClientRect(),c=sc.getBoundingClientRect(),k=stageScale();const top=(r.top-c.top)/k,bot=(r.bottom-c.top)/k,H=sc.clientHeight;if(top<30||bot>H-30)sc.scrollTop+=((top+bot)/2-H/2)}}}
 function npOpen(){return $('#np').classList.contains('open')}
-function roots(){if($('#menu').classList.contains('open'))return[$('#menu')];if($('#search').classList.contains('open'))return[$('#search')];if(npOpen())return[$('#np')];return[$('#rail'),$('#top'),$('#view'),$('#bar')]}
+function roots(){if($('#about').classList.contains('open'))return[$('#about')];if($('#menu').classList.contains('open'))return[$('#menu')];if($('#search').classList.contains('open'))return[$('#search')];if(npOpen())return[$('#np')];return[$('#rail'),$('#top'),$('#view'),$('#bar')]}
 function cands(){const np=$('#np');return roots().flatMap(r=>[...r.querySelectorAll('[data-f]')]).filter(e=>{if(np.classList.contains('open')&&e.closest('#qside')&&!np.classList.contains('q'))return false;const b=e.getBoundingClientRect();return b.width>0&&b.height>0})}
 function move(d){const a=cands();if(!focusEl||!a.includes(focusEl)){setFocus(a[0]);return}
  const f=focusEl.getBoundingClientRect(),cx=f.left+f.width/2,cy=f.top+f.height/2;let best=null,bs=1e9;
@@ -275,7 +296,7 @@ function move(d){const a=cands();if(!focusEl||!a.includes(focusEl)){setFocus(a[0
  if(best)setFocus(best);else bump(d)}
 function bump(d){const e=focusEl;if(!e)return;const m={r:'8px 0',l:'-8px 0',d:'0 8px',u:'0 -8px'}[d];e.animate([{translate:'0 0'},{translate:m},{translate:'0 0'}],{duration:220,easing:'ease-out'})}
 /* ---------- rendering ---------- */
-function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>[t,i]).filter(([t,i])=>i===0||i===2).map(([t,i])=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="ri f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div>`;qrDraw()}
+function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>[t,i]).filter(([t,i])=>i===0||i===2).map(([t,i])=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="ri f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div><div class="cred"><span>Crafted by</span><b>Sagar Nanivadekar</b></div>`;qrDraw()}
 function songRow(t,i,mode){const cur=S.cur===t;const lead=mode==='n'?`<div class="n">${i+1}</div>`:`<div class="th">${art(t)}</div>`;
  return `<div class="row f ${cur?'cur':''}" data-f data-menu data-a="song:${t.id}:${mode==='n'?'f':'all'}">${lead}<div class="mt"><div class="t">${t.title}</div><div class="s">${t.artist}${mode==='n'?'':' · '+t.folder}</div></div>${cur?'<span class="eq"><i></i><i></i><i></i></span>':''}<div class="d">${fmt(t.dur)}</div></div>`}
 function renderView(keep){const v=$('#view');let h='';const f=S.path&&S.path[S.path.length-1];
@@ -284,7 +305,7 @@ function renderView(keep){const v=$('#view');let h='';const f=S.path&&S.path[S.p
   h=`<div class="hero"><div class="chip">${f.isArtist?'Artist':f.subs?'Folder':'Folder'}${S.path.length>1?' · '+S.path[0].n:''}</div>${f.art&&!f.subs?art(f,'hart'):folderTile('hart')}<h2>${f.n}</h2><div class="m">${f.isArtist?'Artist':'Folder'} • ${f.cnt}${f.songs.length&&!f.subs?' • '+mins(f.songs):''}</div>
   ${f.songs.length?`<div class="hbtns"><div class="cbtn f" data-f data-a="shufflef">${ICON.shuf}</div><div class="cbtn big f" data-f data-a="playf">${ICON.play}</div><div class="cbtn f" data-f data-label="Add to queue" data-a="queuef">${ICON.list}</div></div>`:''}</div>
   <div class="list">${f.subs?f.subs.map((s,i)=>`<div class="row f" data-f data-a="open:${i}"><div class="th">${folderTile()}</div><div class="mt"><div class="t">${s.n}</div><div class="s">${s.songs.length} songs</div></div></div>`).join(''):f.songs.map((t,i)=>songRow(t,i,'n')).join('')}</div>`}
- else if(S.tab===0){const seg=`<div class="seg"><div class="sg f ${S.fview==='grid'?'on':''}" data-f data-a="fv:grid">${ICON.gridv}<span>Folder view</span></div><div class="sg f ${S.fview==='list'?'on':''}" data-f data-a="fv:list">${ICON.listv}<span>List view</span></div></div>`;
+ else if(S.tab===0){const seg=`<div class="seg"><div class="sg f ${S.fview==='grid'?'on':''}" data-f data-label="Folder view" data-a="fv:grid">${ICON.gridv}</div><div class="sg f ${S.fview==='list'?'on':''}" data-f data-label="List view" data-a="fv:list">${ICON.listv}</div></div>`;
   h=`<div class="ph"><h1>Folders</h1>${seg}</div>`+(S.fview==='grid'?`<div class="grid">${FOLD.map((x,i)=>`<div class="card f" data-f data-a="fold:${i}">${x.art?art(x):folderTile()}<div class="t">${x.n}</div><div class="s">${x.cnt}</div></div>`).join('')}</div>`
    :`<div class="list">${FOLD.map((x,i)=>`<div class="row f" data-f data-a="fold:${i}"><div class="th">${x.art?art(x):folderTile()}</div><div class="mt"><div class="t">${x.n}</div><div class="s">${x.cnt}${x.subs?'':' • '+mins(x.songs)}</div></div><div class="chev">›</div></div>`).join('')}</div>`)}
  else if(S.tab===1){const al=FOLD.filter(x=>x.art);h=`<h1>Albums</h1><div class="grid">${al.map(x=>`<div class="card f" data-f data-a="fold:${FOLD.indexOf(x)}">${art(x)}<div class="t">${x.n}</div><div class="s">${x.songs[0].artist} · ${x.cnt}</div></div>`).join('')}</div>`}
@@ -301,7 +322,7 @@ function renderNP(){const t=S.cur,np=$('#np');np.style.setProperty('--h',t.h);
  const keep=['open','ctl','q'].filter(c=>np.classList.contains(c));np.className=keep.join(' ')+(S.playing?' playing':'');
  const stg=t.art?art(t,'cover'):`<div class="rec"><div class="lab"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span></div></div>`;
  np.innerHTML=`<div class="bgn"></div>
- <div class="npmain"><div class="nart">${stg}</div><div class="ninfo"><div class="kick">Playing from · ${t.folder}</div><h1>${t.title}</h1><div class="a">${t.artist}</div><div class="al">${t.folder}</div></div></div>
+ <div class="npmain"><div class="nart">${stg}</div><div class="ninfo"><div class="kick">${t.folder}</div><h1>${t.title}</h1><div class="a">${t.artist}</div><div class="al">${t.folder}</div></div></div>
  <div class="npctl"><div class="seekz f" data-f data-seek data-a="seek"><div class="prog"><i id="npprog"></i><b id="npknob"></b></div></div><div class="times"><span id="nptl">0:00</span><span>${fmt(t.dur)}</span></div>
   <div class="row2"><div class="cbtn f" data-f data-a="prev">${ICON.prev}</div><div class="cbtn big f" data-f data-a="toggle">${S.playing?ICON.pause:ICON.play}</div><div class="cbtn f" data-f data-a="next">${ICON.next}</div>
    <div class="side"><div class="cbtn f" data-f data-label="Go to folder" data-a="gotofolder">${ICON.gof}</div><div class="cbtn f" data-f data-label="Up next" data-a="queue">${ICON.list}</div></div></div></div>
@@ -345,6 +366,8 @@ function prev(){if(S.pos>5)S.pos=0;else{const i=TR.indexOf(S.cur);if(i>0)setCur(
 function activate(el,quiet){if(!el)return;const a=el.getAttribute('data-a')||'',p=a.split(':');
  switch(p[0]){
  case'tab':S.tab=+p[1];S.path=null;renderRail();renderView();setFocus(document.querySelector(`#rail [data-a="tab:${S.tab}"]`),true);if(!quiet)setFocus(document.querySelector('#view [data-f]'),true);break;
+ case'about':openAbout(true);break;
+ case'aboutclose':openAbout(false);break;
  case'rescan':toast('Scanning USB…  '+TR.length+' songs found');break;
  case'fold':{const f=FOLD[+p[1]];if($('#search').classList.contains('open'))open('#search',false);S.path=[f];renderRail();renderView();break}
  case'open':{const f=S.path[0].subs[+p[1]];S.path.push(f);renderView();break}
@@ -381,6 +404,10 @@ function sdraw(){$('#sbox').innerHTML=sq?`<span>${sq}</span><i class="caret"></i
  const fo=FOLD.filter(f=>f.n.toLowerCase().includes(q)).slice(0,2);
  r.style.display='block';r.innerHTML=(m.length?`<div class="hh">Songs</div>`+m.map(t=>`<div class="row f" data-f data-a="song:${t.id}:all"><div class="th">${art(t)}</div><div class="mt"><div class="t">${t.title}</div><div class="s">${t.artist} · ${t.folder}</div></div></div>`).join(''):'')+(fo.length?`<div class="hh" style="margin-top:14px">Folders</div>`+fo.map(f=>`<div class="row f" data-f data-a="fold:${FOLD.indexOf(f)}"><div class="th">${f.art?art(f):folderTile()}</div><div class="mt"><div class="t">${f.n}</div><div class="s">${f.cnt}</div></div></div>`).join(''):'')||'<div class="s" style="font-size:28px;color:var(--muted)">No matches</div>'}
 function skey(k){if(k==='←')sq=sq.slice(0,-1);else sq+=k;sdraw()}
+/* ---------- developer credit: three options to compare (keys 1, 2, 3) ---------- */
+let splashT=null;
+function openAbout(on){const a=$('#about');if(on){a.innerHTML=`<div class="abox"><div class="logo big"><i></i></div><h2>USB Music</h2><div class="ver">Version 1.1</div><div class="who"><span>Developer</span><b>Sagar Nanivadekar</b></div><div class="note">Plays the music on your USB drive through the TV.<br>Control it from the remote or from your phone at 192.168.1.6:8080.</div><div class="pill pri f" data-f data-a="aboutclose">Close</div></div>`;a.classList.add('open');setFocus(a.querySelector('[data-f]'),true)}else{a.classList.remove('open');const r=document.querySelector('#rail [data-a="about"]');if(r)setFocus(r,true)}}
+function splash(){const e=$('#splash');e.innerHTML=`<div class="sbox"><div class="logo big"><i></i></div><h1>USB Music</h1><div class="who"><span>Crafted by</span><b>Sagar Nanivadekar</b></div></div>`;e.classList.add('on');clearTimeout(splashT);splashT=setTimeout(()=>e.classList.remove('on'),3200)}
 /* ---------- keys ---------- */
 let hold=null,held=false,rep=0,idleT=null;
 function wakeAmbient(){return false}
@@ -408,6 +435,7 @@ addEventListener('keydown',e=>{const k=e.key;
 addEventListener('keyup',e=>{if(e.key==='Enter'){clearTimeout(hold);if(swallowUp){swallowUp=false;return}if(!held)activate(focusEl);held=false}});
 addEventListener('click',e=>{const el=e.target.closest('[data-f]');if(el&&cands().includes(el)){setFocus(el,true);activate(el)}});
 function back(){
+ if($('#about').classList.contains('open'))return openAbout(false);
  if($('#menu').classList.contains('open'))return closeMenu();
  if($('#search').classList.contains('open')){open('#search',false);return setFocus(document.querySelector('[data-a=search]'),true)}
  if(npOpen()){if($('#np').classList.contains('q'))return closeQ();return openNP(false)}
@@ -419,7 +447,7 @@ function qrDraw(){const c=$('#qrc');if(!c)return;let s=3,h='';const fp=(x,y)=>{c
  for(let y=0;y<15;y++)for(let x=0;x<15;x++){s=(s*48271)%2147483647;const corner=(x<6&&y<6)||(x>8&&y<6)||(x<6&&y>8);h+=`<i class="${(corner?fp(x,y):s%2)?'k':''}"></i>`}c.innerHTML=h}
 function fit(){const k=Math.min(innerWidth/1920,(innerHeight-34)/1080);$('#stage').style.transform=`scale(${k})`}
 addEventListener('resize',fit);fit();
-renderRail();renderView();renderBar();renderNP();
+renderRail();renderView();renderBar();renderNP();splash();
 setFocus(document.querySelector('#view .card'),true);
 setTimeout(()=>toast('Welcome back: resumed "'+S.cur.title+'" at '+fmt(S.pos)+' (paused)'),600);
 setInterval(()=>{if(S.playing){S.pos++;if(S.pos>=S.cur.dur){next()}tick()}},1000);

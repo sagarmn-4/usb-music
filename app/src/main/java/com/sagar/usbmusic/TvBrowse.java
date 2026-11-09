@@ -285,6 +285,17 @@ final class TvBrowse {
         qrText.addView(urlView);
         qrBox.addView(qrText, new LinearLayout.LayoutParams(0, -2, 1f));
         rail.addView(qrBox, new LinearLayout.LayoutParams(-1, -2));
+        TextView craftedBy = TvUi.text(activity, "CRAFTED BY", 16, 0xFF6F6F75, false);
+        craftedBy.setLetterSpacing(0.14f);
+        LinearLayout.LayoutParams cbp = new LinearLayout.LayoutParams(-2, -2);
+        cbp.topMargin = px(14);
+        cbp.leftMargin = px(18);
+        rail.addView(craftedBy, cbp);
+        TextView creator = TvUi.text(activity, "Sagar Nanivadekar", 21, 0xFFC6C6CC, true);
+        LinearLayout.LayoutParams crp = new LinearLayout.LayoutParams(-2, -2);
+        crp.topMargin = px(2);
+        crp.leftMargin = px(18);
+        rail.addView(creator, crp);
 
         // ---- content
         content = new FrameLayout(activity);
@@ -359,8 +370,85 @@ final class TvBrowse {
 
         styleRail();
         // Top of the stack: the full-page player (above the rail and the bar), then the messages.
+        segTip = TvUi.text(activity, "", 22, Color.BLACK, true);
+        segTip.setBackground(TvUi.round(Color.WHITE, 20));
+        segTip.setPadding(px(18), px(8), px(18), px(8));
+        segTip.setVisibility(View.GONE);
+        root.addView(segTip, new FrameLayout.LayoutParams(-2, -2));
         player.np().bringToFront();
         toastView.bringToFront();
+        if (!splashDone) {
+            splashDone = true;
+            splash = buildSplash();
+            root.addView(splash, new FrameLayout.LayoutParams(-1, -1));
+            handler.postDelayed(new Runnable() {
+                @Override public void run() {
+                    hideSplash();
+                }
+            }, 3200);
+        }
+    }
+
+    // ---- start-up splash ------------------------------------------------------------------
+
+    private static boolean splashDone;
+    private View splash;
+
+    private View buildSplash() {
+        FrameLayout f = new FrameLayout(act);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        bg.setGradientRadius(px(1300));
+        bg.setGradientCenter(0.5f, 0.4f);
+        bg.setColors(new int[]{0xFF2A0F17, 0xFF050505});
+        f.setBackground(bg);
+        f.setClickable(true);
+        LinearLayout col = new LinearLayout(act);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER);
+        ImageView logo = new ImageView(act);
+        logo.setImageResource(R.drawable.ic_launcher);
+        col.addView(logo, new LinearLayout.LayoutParams(px(120), px(120)));
+        TextView name = TvUi.text(act, "USB Music", 96, TvUi.TEXT, true);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2);
+        np.topMargin = px(30);
+        col.addView(name, np);
+        LinearLayout box = new LinearLayout(act);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(px(44), px(22), px(44), px(24));
+        box.setBackground(TvUi.round(0x14FFFFFF, 24));
+        TextView by = TvUi.text(act, "CRAFTED BY", 22, 0xFF9A9AA0, false);
+        by.setLetterSpacing(0.14f);
+        by.setGravity(Gravity.CENTER);
+        box.addView(by, new LinearLayout.LayoutParams(-2, -2));
+        TextView who = TvUi.text(act, "Sagar Nanivadekar", 46, TvUi.TEXT, true);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(-2, -2);
+        wp.topMargin = px(8);
+        box.addView(who, wp);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-2, -2);
+        bp.topMargin = px(40);
+        col.addView(box, bp);
+        f.addView(col, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+        return f;
+    }
+
+    private void hideSplash() {
+        final View s = splash;
+        if (s == null) return;
+        splash = null;
+        s.animate().alpha(0f).setDuration(800).withEndAction(new Runnable() {
+            @Override public void run() {
+                root.removeView(s);
+            }
+        }).start();
+    }
+
+    /** Any key skips the splash (that key is not used for anything else). */
+    boolean onSplashKey() {
+        if (splash == null) return false;
+        hideSplash();
+        return true;
     }
 
     View view() {
@@ -1189,6 +1277,22 @@ final class TvBrowse {
     // ---- Folders page: Folder view (cover grid) or List view ---------------------------------
 
     private View segGrid, segList;
+    private TextView segTip;
+
+    /** The name of an icon-only button, shown under it while it has the focus. */
+    private void showSegTip(View v, String text) {
+        segTip.setText(text);
+        segTip.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int[] a = new int[2], b = new int[2];
+        v.getLocationInWindow(a);
+        root.getLocationInWindow(b);
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) segTip.getLayoutParams();
+        int w = segTip.getMeasuredWidth();
+        lp.leftMargin = Math.max(0, Math.min(a[0] - b[0] + v.getWidth() / 2 - w / 2, root.getWidth() - w - px(20)));
+        lp.topMargin = a[1] - b[1] + v.getHeight() + px(14);
+        segTip.setLayoutParams(lp);
+        segTip.setVisibility(View.VISIBLE);
+    }
 
     private boolean foldersAsList() {
         return act.getSharedPreferences("usbmusic_ui", Context.MODE_PRIVATE).getBoolean("folders_list", false);
@@ -1216,23 +1320,21 @@ final class TvBrowse {
         final LinearLayout seg = new LinearLayout(act);
         seg.setOrientation(LinearLayout.HORIZONTAL);
         seg.setGravity(Gravity.CENTER_VERTICAL);
-        seg.setPadding(px(28), 0, px(30), 0);
+        seg.setPadding(0, 0, 0, 0);
+        seg.setGravity(Gravity.CENTER);
         final GradientDrawable bg = TvUi.round(on ? 0x2EFFFFFF : 0, 34);
         seg.setBackground(bg);
         final ImageView ic = new ImageView(act);
         ic.setImageResource(icon);
         ic.setColorFilter(on ? Color.WHITE : 0xFFCFCFD4, PorterDuff.Mode.SRC_IN);
-        seg.addView(ic, new LinearLayout.LayoutParams(px(32), px(32)));
-        final TextView t = TvUi.text(act, label, 27, on ? Color.WHITE : 0xFFCFCFD4, true);
-        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
-        tp.leftMargin = px(14);
-        seg.addView(t, tp);
+        seg.addView(ic, new LinearLayout.LayoutParams(px(36), px(36)));
+        final String tipText = label;
         TvUi.focusable(seg, 1.06f, new TvUi.FocusChange() {
             @Override public void onFocus(boolean f) {
                 bg.setColor(f ? Color.WHITE : on ? 0x2EFFFFFF : 0);
-                int c = f ? Color.BLACK : on ? Color.WHITE : 0xFFCFCFD4;
-                t.setTextColor(c);
-                ic.setColorFilter(c, PorterDuff.Mode.SRC_IN);
+                ic.setColorFilter(f ? Color.BLACK : on ? Color.WHITE : 0xFFCFCFD4, PorterDuff.Mode.SRC_IN);
+                if (f) showSegTip(seg, tipText);
+                else segTip.setVisibility(View.GONE);
             }
         });
         Runnable action = new Runnable() {
@@ -1265,8 +1367,8 @@ final class TvBrowse {
         box.setBackground(TvUi.round(0x0FFFFFFF, 46));
         segGrid = segment(R.drawable.ic_view_grid, "Folder view", !asList, false);
         segList = segment(R.drawable.ic_view_list, "List view", asList, true);
-        box.addView(segGrid, new LinearLayout.LayoutParams(-2, px(68)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, px(68));
+        box.addView(segGrid, new LinearLayout.LayoutParams(px(84), px(68)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(84), px(68));
         lp.leftMargin = px(12);
         box.addView(segList, lp);
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-2, -2);
