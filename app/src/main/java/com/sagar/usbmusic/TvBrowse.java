@@ -204,6 +204,11 @@ final class TvBrowse {
                 selectTab(SEARCH_TAB, true);
             }
         });
+        TvUi.pressToActivate(searchItem, new Runnable() {
+            @Override public void run() {
+                selectTab(SEARCH_TAB, true);
+            }
+        });
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, px(88));
         slp.bottomMargin = px(8);
         rail.addView(searchItem, slp);
@@ -234,6 +239,11 @@ final class TvBrowse {
                     selectTab(n, true);
                 }
             });
+            TvUi.pressToActivate(item, new Runnable() {
+                @Override public void run() {
+                    selectTab(n, true);
+                }
+            });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, px(88));
             lp.bottomMargin = px(8);
             rail.addView(item, lp);
@@ -248,12 +258,18 @@ final class TvBrowse {
                 styleRail();
             }
         });
-        rescanItem.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
+        final Runnable rescanAction = new Runnable() {
+            @Override public void run() {
                 act.startService(new Intent(act, MusicService.class).setAction(MusicService.ACTION_RESCAN));
                 toast("Scanning the USB drive…");
             }
+        };
+        rescanItem.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                rescanAction.run();
+            }
         });
+        TvUi.pressToActivate(rescanItem, rescanAction);
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, px(88));
         rp.bottomMargin = px(14);
         rail.addView(rescanItem, rp);
@@ -591,6 +607,12 @@ final class TvBrowse {
                     actions[n].run();
                 }
             });
+            TvUi.pressToActivate(item, new Runnable() {
+                @Override public void run() {
+                    d.dismiss();
+                    actions[n].run();
+                }
+            });
             box.addView(item, new LinearLayout.LayoutParams(-1, px(88)));
             if (first == null) first = item;
         }
@@ -736,6 +758,7 @@ final class TvBrowse {
                 action.run();
             }
         });
+        TvUi.pressToActivate(t, action);
         return t;
     }
 
@@ -751,7 +774,9 @@ final class TvBrowse {
             @Override public void onFocus(boolean f) {
                 styleCircle(b, big, f);
                 // Back on the buttons: scroll up so the cover and title above them show again.
-                if (f && list != null) list.smoothScrollToPositionFromTop(0, 0, 200);
+                if (f && list != null && list.getFirstVisiblePosition() > 0) {
+                    list.smoothScrollToPositionFromTop(0, 0, 200);
+                }
             }
         });
         b.setOnClickListener(new View.OnClickListener() {
@@ -759,6 +784,7 @@ final class TvBrowse {
                 action.run();
             }
         });
+        TvUi.pressToActivate(b, action);
         return b;
     }
 
@@ -1235,11 +1261,17 @@ final class TvBrowse {
                 h.art.setRing(f);
             }
         });
+        Runnable open = new Runnable() {
+            @Override public void run() {
+                if (h.open != null) h.open.run();
+            }
+        };
         c.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 if (h.open != null) h.open.run();
             }
         });
+        TvUi.pressToActivate(c, open);
         return c;
     }
 
@@ -1435,6 +1467,7 @@ final class TvBrowse {
         TvUi.ArtView art;
         TvUi.EqView eq;
         LinearLayout inner;
+        GradientDrawable bg;
         boolean focused;
         boolean current;
         RowItem item;
@@ -1485,6 +1518,8 @@ final class TvBrowse {
         h.inner.setOrientation(LinearLayout.HORIZONTAL);
         h.inner.setGravity(Gravity.CENTER_VERTICAL);
         h.inner.setPadding(px(26), 0, px(30), 0);
+        h.bg = TvUi.round(0, 14);
+        h.inner.setBackground(h.bg);
         h.number = TvUi.text(act, "", 28, TvUi.MUTED, false);
         h.number.setGravity(Gravity.CENTER);
         h.inner.addView(h.number, new LinearLayout.LayoutParams(px(56), -2));
@@ -1522,6 +1557,16 @@ final class TvBrowse {
         h.inner.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 clickRow(h);
+            }
+        });
+        // Folder, album and artist rows open on the key press itself (see TvUi.pressToActivate);
+        // song rows keep click-on-release so that holding OK can open the menu instead.
+        h.inner.setOnKeyListener(new View.OnKeyListener() {
+            @Override public boolean onKey(View v, int code, KeyEvent e) {
+                if (h.item == null || h.item.header != null || h.item.id >= 0) return false;
+                if (code != KeyEvent.KEYCODE_DPAD_CENTER && code != KeyEvent.KEYCODE_ENTER) return false;
+                if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) clickRow(h);
+                return true;
             }
         });
         // Holding OK (or the remote's Menu key) opens Play next / Add to queue / Go to folder.
@@ -1577,7 +1622,8 @@ final class TvBrowse {
 
     private void styleRow(RowHolder h) {
         if (h.item != null && h.item.header != null) {
-            h.inner.setBackground(null);
+            h.bg.setColor(0);
+            h.bg.setStroke(0, 0);
             h.title.setTextColor(TvUi.MUTED);
             h.title.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(24));
             h.eq.setVisibility(View.GONE);
@@ -1585,12 +1631,14 @@ final class TvBrowse {
         }
         h.title.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(31));
         boolean f = h.focused;
+        // One background drawable per row whose colour changes: swapping drawables (or setting null)
+        // asks for a layout, and doing that from a focus change inside a ListView loops forever.
         if (f) {
-            GradientDrawable d = TvUi.round(0x29FFFFFF, 14);
-            d.setStroke(px(4), Color.WHITE);
-            h.inner.setBackground(d);
+            h.bg.setColor(0x29FFFFFF);
+            h.bg.setStroke(px(4), Color.WHITE);
         } else {
-            h.inner.setBackground(null);
+            h.bg.setColor(0);
+            h.bg.setStroke(0, 0);
         }
         h.title.setTextColor(h.current ? TvUi.ACCENT : TvUi.TEXT);
         h.sub.setTextColor(TvUi.MUTED);

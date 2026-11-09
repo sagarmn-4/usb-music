@@ -101,6 +101,25 @@ final class TvUi {
         });
     }
 
+    /**
+     * Runs the action as soon as OK is pressed, instead of waiting for the key to come back up.
+     * A normal click needs a short press: if the key is held a little too long (remotes repeat
+     * the key then) Android treats it as a long press and the click never happens.
+     */
+    static void pressToActivate(View v, final Runnable action) {
+        v.setOnKeyListener(new View.OnKeyListener() {
+            @Override public boolean onKey(View view, int code, android.view.KeyEvent e) {
+                if (code != android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                        && code != android.view.KeyEvent.KEYCODE_ENTER
+                        && code != android.view.KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    return false;
+                }
+                if (e.getAction() == android.view.KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) action.run();
+                return true;
+            }
+        });
+    }
+
     static String fmt(int ms) {
         int s = Math.max(0, ms / 1000);
         return (s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
@@ -120,10 +139,15 @@ final class TvUi {
     /** Cover picture on a rounded (or round) tile; shows a coloured tile with an icon until/unless art loads. */
     static final class ArtView extends ImageView {
         private final int size;
+        /** Focus ring, created once and only faded in and out: adding or removing a foreground asks for a new layout. */
+        private final GradientDrawable ringDrawable = ring(0, 6, Color.WHITE);
+        private int padNow = -1;
 
         ArtView(Context c, final int sizePx, final boolean circle, final float radius) {
             super(c);
             this.size = sizePx;
+            ringDrawable.setAlpha(0);
+            setForeground(ringDrawable);
             setOutlineProvider(new ViewOutlineProvider() {
                 @Override public void getOutline(View view, Outline o) {
                     if (circle) o.setOval(0, 0, view.getWidth(), view.getHeight());
@@ -141,8 +165,7 @@ final class TvUi {
             setBackground(grey
                     ? new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF3A3A40, 0xFF222226})
                     : coverGradient(hue));
-            int pad = Math.round(size * 0.29f);
-            setPadding(pad, pad, pad, pad);
+            pad(Math.round(size * 0.29f));
             setScaleType(ScaleType.FIT_CENTER);
             setImageResource(iconRes);
             setColorFilter(grey ? 0xFFC9C9CF : Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
@@ -150,14 +173,21 @@ final class TvUi {
 
         void showBitmap(Bitmap b) {
             clearColorFilter();
-            setPadding(0, 0, 0, 0);
+            pad(0);
             setScaleType(ScaleType.CENTER_CROP);
             setImageBitmap(b);
         }
 
+        /** Only changes the padding when it really differs; every change asks the parent for a layout. */
+        private void pad(int p) {
+            if (padNow == p) return;
+            padNow = p;
+            setPadding(p, p, p, p);
+        }
+
         /** White ring drawn inside the edge while the tile is focused. */
         void setRing(boolean on) {
-            setForeground(on ? ring(0, 6, Color.WHITE) : null);
+            ringDrawable.setAlpha(on ? 255 : 0);
         }
     }
 

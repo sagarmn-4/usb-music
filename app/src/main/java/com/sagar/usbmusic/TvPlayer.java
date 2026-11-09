@@ -151,6 +151,11 @@ final class TvPlayer {
                 openNp(false);
             }
         });
+        TvUi.pressToActivate(info, new Runnable() {
+            @Override public void run() {
+                openNp(false);
+            }
+        });
         row.addView(info, new LinearLayout.LayoutParams(px(620), px(96)));
 
         LinearLayout ctls = new LinearLayout(act);
@@ -381,6 +386,7 @@ final class TvPlayer {
                 action.run();
             }
         });
+        TvUi.pressToActivate(b, action);
         return b;
     }
 
@@ -736,15 +742,13 @@ final class TvPlayer {
             dp.leftMargin = px(20);
             inner.addView(dur, dp);
             wrap.addView(inner, new FrameLayout.LayoutParams(-1, px(88)));
+            final GradientDrawable rowBg = TvUi.round(0, 14);
+            inner.setBackground(rowBg);
             TvUi.focusable(inner, 1.01f, new TvUi.FocusChange() {
                 @Override public void onFocus(boolean f) {
-                    if (f) {
-                        GradientDrawable d = TvUi.round(0x29FFFFFF, 14);
-                        d.setStroke(px(4), Color.WHITE);
-                        inner.setBackground(d);
-                    } else {
-                        inner.setBackground(null);
-                    }
+                    // Same drawable, new colour: swapping drawables here would loop (see TvBrowse.styleRow).
+                    rowBg.setColor(f ? 0x29FFFFFF : 0);
+                    rowBg.setStroke(f ? px(4) : 0, Color.WHITE);
                 }
             });
             inner.setOnClickListener(new View.OnClickListener() {

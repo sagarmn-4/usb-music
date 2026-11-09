@@ -41,12 +41,12 @@ final class TvArt {
     static void load(Context ctx, final TvUi.ArtView v, final Track t, int iconRes) {
         final String key = key(t);
         v.setTag(key);
-        v.showIcon(TvUi.hash(key), iconRes, false);
         Bitmap hit = CACHE.get(key);
         if (hit != null) {
             v.showBitmap(hit);
             return;
         }
+        v.showIcon(TvUi.hash(key), iconRes, false);
         if (NONE.contains(key)) return;
         final Context app = ctx.getApplicationContext();
         final int want = v.size();
