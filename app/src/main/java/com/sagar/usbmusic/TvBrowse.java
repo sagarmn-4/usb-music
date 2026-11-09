@@ -14,6 +14,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.ColorDrawable;
@@ -166,8 +167,8 @@ final class TvBrowse {
         rail.setClipToPadding(false);
         root.addView(rail, new FrameLayout.LayoutParams(px(360), -1));
         divider = new View(activity);
-        divider.setBackgroundColor(0xFF1D1D1D);
-        FrameLayout.LayoutParams dl = new FrameLayout.LayoutParams(Math.max(1, px(1)), -1);
+        divider.setBackgroundColor(0xFF3A3A40);
+        FrameLayout.LayoutParams dl = new FrameLayout.LayoutParams(Math.max(2, px(2)), -1);
         dl.leftMargin = px(360);
         root.addView(divider, dl);
 
@@ -873,10 +874,37 @@ final class TvBrowse {
 
     private void styleRailItem(LinearLayout item, ImageView icon, TextView label, boolean on) {
         boolean f = item.hasFocus();
-        item.setBackground(f ? TvUi.round(Color.WHITE, 44) : on ? TvUi.round(0x1FFFFFFF, 44) : null);
-        int c = f ? Color.BLACK : on ? Color.WHITE : REST;
+        item.setBackground(f ? TvUi.round(Color.WHITE, 44) : on ? new BarDrawable(px(88)) : null);
+        int c = f ? Color.BLACK : on ? Color.WHITE : 0xFFA4A4AA;
         label.setTextColor(c);
         icon.setColorFilter(c, PorterDuff.Mode.SRC_IN);
+    }
+
+    /** Selected rail item: no fill, only a thin accent bar on its left edge. */
+    private static final class BarDrawable extends android.graphics.drawable.Drawable {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int h;
+
+        BarDrawable(int h) {
+            this.h = h;
+            p.setColor(TvUi.ACCENT);
+        }
+
+        @Override public void draw(Canvas c) {
+            Rect b = getBounds();
+            float inset = h * 0.25f;
+            c.drawRoundRect(new android.graphics.RectF(b.left - px(14), b.top + inset, b.left - px(10), b.bottom - inset), px(2), px(2), p);
+        }
+
+        @Override public void setAlpha(int a) {
+        }
+
+        @Override public void setColorFilter(android.graphics.ColorFilter f) {
+        }
+
+        @Override public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
     }
 
     private void styleRail() {
@@ -896,7 +924,7 @@ final class TvBrowse {
     /** Settings and Rescan are rarely used: small, grey, and only softly highlighted. */
     private void styleQuiet(LinearLayout item, ImageView icon, TextView label, boolean on) {
         boolean f = item.hasFocus();
-        item.setBackground(f ? TvUi.round(0x24FFFFFF, 31) : on ? TvUi.round(0x1AFFFFFF, 31) : null);
+        item.setBackground(f ? TvUi.round(0x24FFFFFF, 31) : on ? new BarDrawable(px(62)) : null);
         int c = f || on ? Color.WHITE : 0xFF8E8E94;
         label.setTextColor(c);
         icon.setColorFilter(c, PorterDuff.Mode.SRC_IN);
@@ -1569,7 +1597,7 @@ final class TvBrowse {
     }
 
     private boolean foldersAsList() {
-        return act.getSharedPreferences("usbmusic_ui", Context.MODE_PRIVATE).getBoolean("folders_list", false);
+        return act.getSharedPreferences("usbmusic_ui", Context.MODE_PRIVATE).getBoolean("folders_list", true);
     }
 
     private void switchFolders(boolean toList) {

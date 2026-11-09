@@ -237,6 +237,23 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 .tag{font-size:20px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 14px;border-radius:14px;background:rgba(255,255,255,.14);color:#e0e0e4}
 .fs{font-size:30px;color:#cfcfd4;margin-top:8px}
 .fnote{font-size:24px;color:var(--muted);margin:26px 0 0 14px}
+
+/* ---- options to compare (preview only) ---- */
+#opt{position:fixed;right:12px;top:10px;z-index:99;background:#1c1c20;border:1px solid #333;border-radius:12px;padding:8px 12px;font:13px/1.5 system-ui;color:#cfcfd4;display:flex;flex-direction:column;gap:6px}
+#opt div{display:flex;gap:6px;align-items:center}#opt b{color:#fff;min-width:92px}
+#opt span.c{cursor:pointer;padding:3px 11px;border-radius:12px;background:#2c2c31}#opt span.c.on{background:#fff;color:#000}
+/* edge A: crisp lighter line */
+body.e1 #rail{border-right:2px solid #3a3a40}
+/* edge B: soft shadow, rail a touch lighter than the page */
+body.e2 #rail{border-right:0;background:#0b0b0d;box-shadow:14px 0 40px rgba(0,0,0,.85),1px 0 0 rgba(255,255,255,.04)}
+/* selected A: no fill, just white text and a thin accent bar */
+body.s1 .ri.on:not(.focus){background:none;position:relative}
+body.s1 .ri.on:not(.focus)::before{content:"";position:absolute;left:-12px;top:22px;bottom:22px;width:4px;border-radius:2px;background:var(--accent)}
+body.s1 .ri.sub.on:not(.focus)::before{top:16px;bottom:16px}
+body.s1 .ri:not(.on):not(.focus):not(.sub){color:#a4a4aa}
+/* selected B: very light fill, smaller corners */
+body.s2 .ri.on:not(.focus){background:rgba(255,255,255,.06);border-radius:16px}
+body.s2 .ri:not(.on):not(.focus):not(.sub){color:#a4a4aa}
 </style>
 </head>
 <body>
@@ -301,7 +318,7 @@ const mins=a=>{const m=Math.round(a.reduce((x,t)=>x+t.dur,0)/60);return m+' minu
 function art(t,cls=''){const h=t.h;return `<div class="art ${cls}" style="background:linear-gradient(145deg,hsl(${h} 62% 52%),hsl(${h+45} 58% 26%))">${ICON.note.replace('<svg','<svg fill="#fff"')}</div>`}
 function folderTile(cls=''){return `<div class="art ftile ${cls}">${ICON.folder}</div>`}
 /* ---------- state ---------- */
-const S={credit:1,fview:'grid',tab:0,path:null,cur:TR[2],playing:false,pos:75,up:TR.slice(3,12),shuffle:false,rep:0,vol:14};
+const S={credit:1,fview:'list',tab:0,path:null,cur:TR[2],playing:false,pos:75,up:TR.slice(3,12),shuffle:false,rep:0,vol:14};
 const TABS=[['Folders','album'],['Albums','album'],['Songs','note'],['Artists','personc']];
 let focusEl=null,railT=null;
 function stageScale(){return $('#stage').getBoundingClientRect().width/1920}
@@ -496,6 +513,12 @@ renderRail();renderView();renderBar();renderNP();splash();
 setFocus(document.querySelector('#view .card'),true);
 setTimeout(()=>toast('Welcome back: resumed "'+S.cur.title+'" at '+fmt(S.pos)+' (paused)'),600);
 setInterval(()=>{if(S.playing){S.pos++;if(S.pos>=S.cur.dur){next()}tick()}},1000);
+
+(function(){const o=document.createElement('div');o.id='opt';
+o.innerHTML='<div><b>Rail edge</b><span class="c on" data-g="e" data-v="">current</span><span class="c" data-g="e" data-v="e1">A line</span><span class="c" data-g="e" data-v="e2">B shadow</span></div><div><b>Selected item</b><span class="c on" data-g="s" data-v="">current</span><span class="c" data-g="s" data-v="s1">A bar</span><span class="c" data-g="s" data-v="s2">B soft fill</span></div>';
+document.body.appendChild(o);
+o.onclick=e=>{const c=e.target.closest('.c');if(!c)return;const g=c.dataset.g;o.querySelectorAll('.c[data-g="'+g+'"]').forEach(x=>x.classList.remove('on'));c.classList.add('on');document.body.classList.remove(g+'1',g+'2');if(c.dataset.v)document.body.classList.add(c.dataset.v)};
+})();
 </script>
 </body>
 </html>
