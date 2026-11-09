@@ -329,6 +329,14 @@ final class TvBrowse {
         rp.bottomMargin = px(14);
         rail.addView(rescanItem, rp);
 
+        // Fixed Up/Down order through the rail, so Down from Songs reaches Settings instead of the page beside it.
+        LinearLayout[] order = {searchItem, railItems[0], railItems[2], settingsItem, rescanItem};
+        for (LinearLayout it : order) it.setId(View.generateViewId());
+        for (int i = 0; i < order.length; i++) {
+            if (i > 0) order[i].setNextFocusUpId(order[i - 1].getId());
+            if (i < order.length - 1) order[i].setNextFocusDownId(order[i + 1].getId());
+        }
+
         LinearLayout qrBox = new LinearLayout(activity);
         qrBox.setOrientation(LinearLayout.HORIZONTAL);
         qrBox.setGravity(Gravity.CENTER_VERTICAL);
