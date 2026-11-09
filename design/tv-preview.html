@@ -58,6 +58,20 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 .hero .m{font-size:26px;color:var(--muted);margin-top:4px}
 .hbtns{display:flex;gap:26px;align-items:center;margin-top:22px}
 .chip{margin-bottom:14px}
+/* label that appears under a round icon button while it has the focus */
+.cbtn[data-label]{position:relative}
+.cbtn[data-label].focus::after{content:attr(data-label);position:absolute;top:calc(100% + 14px);left:50%;transform:translateX(-50%);background:#fff;color:#000;font-size:22px;font-weight:600;padding:8px 18px;border-radius:20px;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+#bar .cbtn[data-label].focus::after{top:auto;bottom:calc(100% + 18px)}
+/* Folders page: view switch (label + icon) and list view */
+.ph{display:flex;align-items:center;justify-content:space-between;margin:6px 0 28px 0;padding-right:14px}
+.ph h1{margin:0 0 0 14px}
+.seg{display:flex;gap:12px;background:rgba(255,255,255,.06);padding:8px;border-radius:44px}
+.sg{height:68px;padding:0 30px;border-radius:34px;display:flex;align-items:center;gap:14px;font-size:27px;font-weight:600;color:#cfcfd4;transition:transform .16s ease-out,background .16s,color .16s,box-shadow .16s}
+.sg svg{width:32px;height:32px;fill:currentColor}
+.sg.on{background:rgba(255,255,255,.18);color:#fff}
+.sg.focus{background:#fff;color:#000;transform:scale(1.06);box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.chev{font-size:46px;color:var(--muted);line-height:1;padding-right:6px}
+.row.focus .chev{color:#fff}
 .cbtn{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.1);transition:transform .16s ease-out,background .16s,color .16s,box-shadow .16s}
 .cbtn svg{width:42px;height:42px;fill:currentColor}
 .cbtn.focus{background:#fff;color:#000;transform:scale(1.14);box-shadow:0 10px 30px rgba(0,0,0,.5)}
@@ -98,8 +112,9 @@ h1{font-size:48px;font-weight:700;margin:6px 0 28px 14px;letter-spacing:-.5px}
 #bar .t{font-size:30px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #bar .s{font-size:23px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #bar .ctls{flex:1;display:flex;justify-content:center;align-items:center;gap:22px;transition:opacity 1.4s}
-#bar .ctls .cbtn{background:transparent}#bar .ctls .cbtn.big{background:rgba(255,255,255,.14);color:#fff;width:100px;height:100px}
-#bar .ctls .cbtn.focus{background:#fff;color:#000}
+#bar .ctls .cbtn{background:transparent;width:70px;height:70px}#bar .ctls .cbtn.big{background:rgba(255,255,255,.14);color:#fff;width:84px;height:84px}#bar .ctls .cbtn.big svg{width:46px;height:46px}
+#bar .ctls .cbtn.focus{background:#fff;color:#000;transform:scale(1.1);box-shadow:none}
+/* the bar is 130 high and its progress line takes the top 20: nothing in the controls may reach it, even when grown by the focus */
 #bar .right{flex:0 0 560px;display:flex;align-items:center;justify-content:flex-end;gap:16px;font-size:26px;color:#cfcfd4;transition:opacity 1.4s}
 #bar .right .cbtn{width:68px;height:68px;background:transparent}#bar .right .cbtn svg{width:36px;height:36px}
 #bar .right .cbtn.focus{background:#fff;color:#000}
@@ -198,7 +213,10 @@ const ICON={
  person:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V21h16v-2.5c0-3-5-4.5-8-4.5z"/></svg>',
  personc:'<svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V21h16v-2.5c0-3-5-4.5-8-4.5z"/></svg>',
  refresh:'<svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg>',
- del:'<svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>'
+ del:'<svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>',
+ gof:'<svg viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8zM12 18v-4.2l-1.6 1.6L9 14l4-4 4 4-1.4 1.4-1.6-1.6V18z" fill-rule="evenodd"/></svg>',
+ gridv:'<svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>',
+ listv:'<svg viewBox="0 0 24 24"><path d="M3 5h4v4H3zm6 0h12v4H9zM3 10h4v4H3zm6 0h12v4H9zM3 15h4v4H3zm6 0h12v4H9z"/></svg>'
 };
 /* ---------- fake library ---------- */
 const POOL=['Morning Light','Slow River','Paper Moons','Golden Hour','Night Train','Quiet Rooms','Echoes','Blue Window','Long Way Home','Small Hours','Wildflower','Monsoon','Late Bloom','Tidal','Lantern','Open Road'];
@@ -218,8 +236,8 @@ const mins=a=>{const m=Math.round(a.reduce((x,t)=>x+t.dur,0)/60);return m+' minu
 function art(t,cls=''){const h=t.h;return `<div class="art ${cls}" style="background:linear-gradient(145deg,hsl(${h} 62% 52%),hsl(${h+45} 58% 26%))">${ICON.note.replace('<svg','<svg fill="#fff"')}</div>`}
 function folderTile(cls=''){return `<div class="art ftile ${cls}">${ICON.folder}</div>`}
 /* ---------- state ---------- */
-const S={tab:0,path:null,cur:TR[2],playing:false,pos:75,up:TR.slice(3,12),shuffle:false,rep:0,vol:14};
-const TABS=[['Folders','folderc'],['Albums','album'],['Songs','note'],['Artists','personc']];
+const S={fview:'grid',tab:0,path:null,cur:TR[2],playing:false,pos:75,up:TR.slice(3,12),shuffle:false,rep:0,vol:14};
+const TABS=[['Folders','album'],['Albums','album'],['Songs','note'],['Artists','personc']];
 let focusEl=null,railT=null;
 function stageScale(){return $('#stage').getBoundingClientRect().width/1920}
 let letterT=null,fastScrolling=false;
@@ -240,25 +258,27 @@ function move(d){const a=cands();if(!focusEl||!a.includes(focusEl)){setFocus(a[0
  if(best)setFocus(best);else bump(d)}
 function bump(d){const e=focusEl;if(!e)return;const m={r:'8px 0',l:'-8px 0',d:'0 8px',u:'0 -8px'}[d];e.animate([{translate:'0 0'},{translate:m},{translate:'0 0'}],{duration:220,easing:'ease-out'})}
 /* ---------- rendering ---------- */
-function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="ri f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div>`;qrDraw()}
+function renderRail(){$('#rail').innerHTML=`<div class="brand"><div class="logo"><i></i></div>USB Music</div>`+TABS.map((t,i)=>[t,i]).filter(([t,i])=>i===0||i===2).map(([t,i])=>`<div class="ri f ${i===S.tab?'on':''}" data-f data-a="tab:${i}">${ICON[t[1]]}${t[0]}</div>`).join('')+`<div class="rfill"></div><div class="ri f" data-f data-a="rescan">${ICON.refresh}Rescan USB</div><div class="qr"><div class="qrc" id="qrc"></div><div><b>Open on phone</b>192.168.1.6:8080</div></div>`;qrDraw()}
 function songRow(t,i,mode){const cur=S.cur===t;const lead=mode==='n'?`<div class="n">${i+1}</div>`:`<div class="th">${art(t)}</div>`;
  return `<div class="row f ${cur?'cur':''}" data-f data-menu data-a="song:${t.id}:${mode==='n'?'f':'all'}">${lead}<div class="mt"><div class="t">${t.title}</div><div class="s">${t.artist}${mode==='n'?'':' · '+t.folder}</div></div>${cur?'<span class="eq"><i></i><i></i><i></i></span>':''}<div class="d">${fmt(t.dur)}</div></div>`}
 function renderView(keep){const v=$('#view');let h='';const f=S.path&&S.path[S.path.length-1];
  $('#bg').style.opacity=f?1:0;if(f)$('#stage').style.setProperty('--h',f.h);
  if(f){const ic=a=>a.replace('<svg','<svg');
   h=`<div class="hero"><div class="chip">${f.isArtist?'Artist':f.subs?'Folder':'Folder'}${S.path.length>1?' · '+S.path[0].n:''}</div>${f.art&&!f.subs?art(f,'hart'):folderTile('hart')}<h2>${f.n}</h2><div class="m">${f.isArtist?'Artist':'Folder'} • ${f.cnt}${f.songs.length&&!f.subs?' • '+mins(f.songs):''}</div>
-  ${f.songs.length?`<div class="hbtns"><div class="cbtn f" data-f data-a="shufflef">${ICON.shuf}</div><div class="cbtn big f" data-f data-a="playf">${ICON.play}</div><div class="cbtn f" data-f data-a="queuef">${ICON.list}</div></div>`:''}</div>
+  ${f.songs.length?`<div class="hbtns"><div class="cbtn f" data-f data-a="shufflef">${ICON.shuf}</div><div class="cbtn big f" data-f data-a="playf">${ICON.play}</div><div class="cbtn f" data-f data-label="Add to queue" data-a="queuef">${ICON.list}</div></div>`:''}</div>
   <div class="list">${f.subs?f.subs.map((s,i)=>`<div class="row f" data-f data-a="open:${i}"><div class="th">${folderTile()}</div><div class="mt"><div class="t">${s.n}</div><div class="s">${s.songs.length} songs</div></div></div>`).join(''):f.songs.map((t,i)=>songRow(t,i,'n')).join('')}</div>`}
- else if(S.tab===0){h=`<h1>Folders</h1><div class="grid">${FOLD.map((x,i)=>`<div class="card f" data-f data-a="fold:${i}">${x.art?art(x):folderTile()}<div class="t">${x.n}</div><div class="s">${x.cnt}</div></div>`).join('')}</div>`}
+ else if(S.tab===0){const seg=`<div class="seg"><div class="sg f ${S.fview==='grid'?'on':''}" data-f data-a="fv:grid">${ICON.gridv}<span>Folder view</span></div><div class="sg f ${S.fview==='list'?'on':''}" data-f data-a="fv:list">${ICON.listv}<span>List view</span></div></div>`;
+  h=`<div class="ph"><h1>Folders</h1>${seg}</div>`+(S.fview==='grid'?`<div class="grid">${FOLD.map((x,i)=>`<div class="card f" data-f data-a="fold:${i}">${x.art?art(x):folderTile()}<div class="t">${x.n}</div><div class="s">${x.cnt}</div></div>`).join('')}</div>`
+   :`<div class="list">${FOLD.map((x,i)=>`<div class="row f" data-f data-a="fold:${i}"><div class="th">${x.art?art(x):folderTile()}</div><div class="mt"><div class="t">${x.n}</div><div class="s">${x.cnt}${x.subs?'':' • '+mins(x.songs)}</div></div><div class="chev">›</div></div>`).join('')}</div>`)}
  else if(S.tab===1){const al=FOLD.filter(x=>x.art);h=`<h1>Albums</h1><div class="grid">${al.map(x=>`<div class="card f" data-f data-a="fold:${FOLD.indexOf(x)}">${art(x)}<div class="t">${x.n}</div><div class="s">${x.songs[0].artist} · ${x.cnt}</div></div>`).join('')}</div>`}
  else if(S.tab===2){h=`<h1>Songs</h1><div class="pills"><div class="pill pri f" data-f data-a="playall">Play all</div><div class="pill f" data-f data-a="shuffleall">Shuffle</div></div><div class="list">${TR.map((t,i)=>songRow(t,i,'t')).join('')}</div>`}
  else{h=`<h1>Artists</h1><div class="grid">${ARTISTS.map((a,i)=>`<div class="card round f" data-f data-a="artist:${i}"><div class="art" style="background:linear-gradient(145deg,hsl(${i*55} 55% 45%),hsl(${i*55+40} 55% 20%))">${ICON.person}</div><div class="t" style="text-align:center">${a}</div><div class="s" style="text-align:center">${TR.filter(t=>t.artist===a).length} songs</div></div>`).join('')}</div>`}
- v.innerHTML=h;if(!keep)v.scrollTop=0;if(!keep)setFocus(v.querySelector('.cbtn.big')||v.querySelector('[data-f]'),true)}
+ v.innerHTML=h;if(!keep)v.scrollTop=0;if(!keep)setFocus(v.querySelector('.cbtn.big')||v.querySelector('.card,.row')||v.querySelector('[data-f]'),true)}
 function renderBar(){const t=S.cur;$('#bar').className=S.playing?'':'paused';
  $('#bar').innerHTML=`<div class="seekz f" data-f data-seek data-a="seek"><div class="prog"><i id="mprog"></i><b id="mknob"></b></div></div>
  <div class="info f" data-f data-a="np">${art(t)}<div style="min-width:0"><div class="t">${t.title}</div><div class="s">${t.artist} · ${t.folder}</div></div></div>
  <div class="ctls"><div class="cbtn f ${S.shuffle?'on':''}" data-f data-a="shuffle">${ICON.shuf}</div><div class="cbtn f" data-f data-a="prev">${ICON.prev}</div><div class="cbtn big f" data-f data-a="toggle">${S.playing?ICON.pause:ICON.play}</div><div class="cbtn f" data-f data-a="next">${ICON.next}</div><div class="cbtn f ${S.rep?'on':''}" data-f data-a="repeat">${ICON.rep}</div></div>
- <div class="right"><span id="mtime">0:00 / ${fmt(t.dur)}</span><div class="cbtn f" data-f data-a="vdn">${ICON.minus}</div><span class="vnum" id="vnum">${S.vol}</span><div class="cbtn f" data-f data-a="vup">${ICON.plus}</div><div class="cbtn f" data-f data-a="queue">${ICON.list}</div></div>`;
+ <div class="right"><span id="mtime">0:00 / ${fmt(t.dur)}</span><div class="cbtn f" data-f data-label="Go to folder" data-a="gotofolder">${ICON.gof}</div><div class="cbtn f" data-f data-label="Up next" data-a="queue">${ICON.list}</div></div>`;
  tick()}
 function renderNP(){const t=S.cur,np=$('#np');np.style.setProperty('--h',t.h);np.className=(npOpen()?'open ':'')+(S.playing?'playing':'');
  const stg=t.art?art(t,'cover'):`<div class="rec"><div class="lab"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span></div></div>`;
@@ -307,6 +327,9 @@ function activate(el,quiet){if(!el)return;const a=el.getAttribute('data-a')||'',
  case'search':openSearch();break;
  case'np':openNP(true);break;
  case'queue':openNP(true,true);break;
+ case'fv':{S.fview=p[1];renderView();setFocus(document.querySelector('#view .sg.on'),true);toast(p[1]==='grid'?'Folder view':'List view');break}
+ case'gotofolder':{const t=S.cur,f=t.fo;if(npOpen())open('#np',false);S.tab=0;S.path=FOLD.includes(f)?[f]:[FOLD.find(x=>x.subs&&x.subs.includes(f)),f];renderRail();renderView();setFocus($('#view .row.cur')||$('#view .cbtn.big'),true);toast('Folder of the playing song: '+f.n);break}
+ case'gotoparent':{if(S.path&&S.path.length>1){const from=S.path.pop().n;renderView();toast('Parent folder of '+from+': '+S.path[S.path.length-1].n)}else if(S.path){const from=S.path[0].n;S.path=null;S.tab=0;renderRail();renderView();toast('Parent of '+from+': all folders')}break}
  case'toggle':S.playing=!S.playing;renderBar();renderNP();refocusBar('toggle');break;
  case'next':next();break;case'prev':prev();break;
  case'shuffle':S.shuffle=!S.shuffle;renderBar();refocusBar('shuffle');toast(S.shuffle?'Shuffle on':'Shuffle off');break;

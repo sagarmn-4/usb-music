@@ -57,6 +57,9 @@ final class TvPlayer {
         void npOpened(boolean open);
 
         void showMenu(String title, String sub, Track art, String[] labels, Runnable[] actions);
+
+        /** Opens the folder that holds the song that is playing. */
+        void goToCurrentFolder();
     }
 
     private static final class QItem {
@@ -73,7 +76,7 @@ final class TvPlayer {
     private SeekView seek;
     private LinearLayout info;
     private TvUi.ArtView barArt;
-    private TextView barTitle, barSub, timeView;
+    private TextView barTitle, barSub, timeView, tip;
     private ImageView btnShuffle, btnPlay, btnRepeat;
 
     // now playing
@@ -162,37 +165,37 @@ final class TvPlayer {
         ctls.setOrientation(LinearLayout.HORIZONTAL);
         ctls.setGravity(Gravity.CENTER);
         ctls.setClipChildren(false);
-        btnShuffle = iconBtn(R.drawable.ic_shuffle, 76, 20, false, new Runnable() {
+        btnShuffle = iconBtn(R.drawable.ic_shuffle, 70, 18, false, new Runnable() {
             @Override public void run() {
                 host.command("shuffle", "on", shuffleOn ? "0" : "1");
             }
         });
-        ImageView prev = iconBtn(R.drawable.ic_prev, 76, 20, false, new Runnable() {
+        ImageView prev = iconBtn(R.drawable.ic_prev, 70, 18, false, new Runnable() {
             @Override public void run() {
                 host.command("prev");
             }
         });
-        btnPlay = iconBtn(R.drawable.ic_play, 100, 26, true, new Runnable() {
+        btnPlay = iconBtn(R.drawable.ic_play, 84, 18, true, new Runnable() {
             @Override public void run() {
                 host.command("toggle");
             }
         });
-        ImageView next = iconBtn(R.drawable.ic_next, 76, 20, false, new Runnable() {
+        ImageView next = iconBtn(R.drawable.ic_next, 70, 18, false, new Runnable() {
             @Override public void run() {
                 host.command("next");
             }
         });
-        btnRepeat = iconBtn(R.drawable.ic_repeat, 76, 20, false, new Runnable() {
+        btnRepeat = iconBtn(R.drawable.ic_repeat, 70, 18, false, new Runnable() {
             @Override public void run() {
                 String m = "off".equals(repeatMode) ? "all" : "all".equals(repeatMode) ? "one" : "off";
                 host.command("repeat", "mode", m);
             }
         });
-        addBtn(ctls, btnShuffle, 76, 11);
-        addBtn(ctls, prev, 76, 11);
-        addBtn(ctls, btnPlay, 100, 11);
-        addBtn(ctls, next, 76, 11);
-        addBtn(ctls, btnRepeat, 76, 11);
+        addBtn(ctls, btnShuffle, 70, 11);
+        addBtn(ctls, prev, 70, 11);
+        addBtn(ctls, btnPlay, 84, 11);
+        addBtn(ctls, next, 70, 11);
+        addBtn(ctls, btnRepeat, 70, 11);
         row.addView(ctls, new LinearLayout.LayoutParams(0, -2, 1f));
 
         LinearLayout right = new LinearLayout(act);
@@ -209,8 +212,22 @@ final class TvPlayer {
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-2, -2);
         tl.rightMargin = px(16);
         right.addView(timeView, tl);
+        final ImageView goFolder = iconBtn(R.drawable.ic_gofolder, 68, 16, false, new Runnable() {
+            @Override public void run() {
+                host.goToCurrentFolder();
+            }
+        });
+        tipOn(goFolder, "Go to folder");
+        tipOn(queue, "Up next");
+        addBtn(right, goFolder, 68, 4);
         addBtn(right, queue, 68, 4);
         row.addView(right, new LinearLayout.LayoutParams(px(560), -2));
+
+        tip = TvUi.text(act, "", 22, Color.BLACK, true);
+        tip.setBackground(TvUi.round(Color.WHITE, 20));
+        tip.setPadding(px(18), px(8), px(18), px(8));
+        tip.setVisibility(View.GONE);
+        bar.addView(tip, new FrameLayout.LayoutParams(-2, -2));
 
         seek = new SeekView(act);
         FrameLayout.LayoutParams skp = new FrameLayout.LayoutParams(-1, px(36));
@@ -376,7 +393,7 @@ final class TvPlayer {
         b.setImageResource(icon);
         b.setTag(Boolean.FALSE);
         styleBtn(b, big);
-        TvUi.focusable(b, 1.14f, new TvUi.FocusChange() {
+        TvUi.focusable(b, big ? 1.1f : 1.14f, new TvUi.FocusChange() {
             @Override public void onFocus(boolean f) {
                 styleBtn(b, big);
             }
@@ -388,6 +405,32 @@ final class TvPlayer {
         });
         TvUi.pressToActivate(b, action);
         return b;
+    }
+
+    /** Shows a small label above the button while it has the focus. */
+    private void tipOn(final View btn, final String label) {
+        final View.OnFocusChangeListener old = btn.getOnFocusChangeListener();
+        btn.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override public void onFocusChange(View v, boolean f) {
+                if (old != null) old.onFocusChange(v, f);
+                if (!f) {
+                    tip.setVisibility(View.GONE);
+                    return;
+                }
+                tip.setText(label);
+                tip.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+                int[] a = new int[2], b = new int[2];
+                v.getLocationInWindow(a);
+                bar.getLocationInWindow(b);
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) tip.getLayoutParams();
+                int w = tip.getMeasuredWidth();
+                lp.leftMargin = Math.max(0, Math.min(a[0] - b[0] + v.getWidth() / 2 - w / 2,
+                        bar.getWidth() - w - px(20)));
+                lp.topMargin = -px(66);
+                tip.setLayoutParams(lp);
+                tip.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     private void addBtn(LinearLayout parent, ImageView b, int size, int gap) {

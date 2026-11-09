@@ -24,7 +24,7 @@ app/src/main/java/com/sagar/usbmusic/
   WebServer.java       tiny HTTP server (port 8080, next free up to 8089): /api/* commands, /art?id= cover images, serves the page
   LibraryScanner.java  scans /storage/* volumes for audio; falls back to MediaStore; skips media-db rows whose file is gone
   MainActivity.java    hosts the TV screen; permission, service start, media keys, Menu key, ambient wake
-  TvBrowse.java        TV screen: left rail (Search, Folders, Albums, Songs, Artists, Rescan USB, small QR), grids, folder/album/artist pages, search page, popup menu
+  TvBrowse.java        TV screen: left rail (Search, Folders with the disc icon, Songs, Rescan USB, small QR; Albums and Artists were removed from the rail and are reached from Search), Folders page with a Folder view / List view switch (choice kept in SharedPreferences "usbmusic_ui"), folder/album/artist pages, search page, popup menu, Go to folder button on the player bar (folder of the playing song)
   TvPlayer.java        player bar along the bottom and the now-playing page (cover or record, tint, Up next queue, ambient mode)
   TvUi.java, TvArt.java, LibraryIndex.java   shared TV look (sizes in 1920x1080 units), cover loading, folder tree/albums/artists (same grouping as index.html)
   AlbumArt.java        embedded cover / folder.jpg lookup for /art

@@ -54,7 +54,7 @@ final class TvBrowse {
     private static final int COLS = 4;
     private static final String[] TABS = {"Folders", "Albums", "Songs", "Artists"};
     private static final int[] TAB_ICONS = {
-            R.drawable.ic_folder, R.drawable.ic_album, R.drawable.ic_note, R.drawable.ic_person};
+            R.drawable.ic_album, R.drawable.ic_album, R.drawable.ic_note, R.drawable.ic_person};
     private static final int REST = 0xFFE6E6EA;
     private static final long AMBIENT_MS = 30000;
     private static final int SEARCH_TAB = 4;
@@ -214,6 +214,7 @@ final class TvBrowse {
         rail.addView(searchItem, slp);
 
         for (int i = 0; i < TABS.length; i++) {
+            if (i == 1 || i == 3) continue; // Albums and Artists are no longer in the rail; Search still opens them
             final int n = i;
             LinearLayout item = railItem(TAB_ICONS[i], TABS[i]);
             railItems[i] = item;
@@ -345,6 +346,10 @@ final class TvBrowse {
 
             @Override public void showMenu(String title, String sub, Track art, String[] labels, Runnable[] actions) {
                 TvBrowse.this.showMenu(title, sub, art, labels, actions);
+            }
+
+            @Override public void goToCurrentFolder() {
+                if (curId >= 0 && curId < idx.tracks.size()) goToFolder(idx.tracks.get(curId));
             }
         });
         // Order from the bottom: lists, now-playing page, rail, player bar.
@@ -722,6 +727,7 @@ final class TvBrowse {
 
     private void styleRail() {
         for (int i = 0; i < railItems.length; i++) {
+            if (railItems[i] == null) continue;
             styleRailItem(railItems[i], railIcons[i], railLabels[i], i == tab);
         }
         styleRailItem(rescanItem, rescanIcon, rescanLabel, false);
@@ -840,7 +846,7 @@ final class TvBrowse {
         int focus = restoreFocus ? rootFocus : 0;
         switch (tab) {
             case 0:
-                showGrid(foldersCards(), "Folders", false, focus);
+                showFolders(focus);
                 break;
             case 1:
                 showGrid(albumCards(), "Albums", false, focus);
@@ -1189,6 +1195,125 @@ final class TvBrowse {
         lv.setCacheColorHint(Color.TRANSPARENT);
         lv.setPadding(0, px(14), 0, px(60));
         return lv;
+    }
+
+    // ---- Folders page: Folder view (cover grid) or List view ---------------------------------
+
+    private View segGrid, segList;
+
+    private boolean foldersAsList() {
+        return act.getSharedPreferences("usbmusic_ui", Context.MODE_PRIVATE).getBoolean("folders_list", false);
+    }
+
+    private void switchFolders(boolean toList) {
+        if (toList == foldersAsList()) return;
+        act.getSharedPreferences("usbmusic_ui", Context.MODE_PRIVATE).edit().putBoolean("folders_list", toList).apply();
+        grab = false;
+        showCurrent(false);
+        grab = true;
+        final View target = toList ? segList : segGrid;
+        if (target != null) {
+            target.postDelayed(new Runnable() {
+                @Override public void run() {
+                    target.requestFocus();
+                }
+            }, 120);
+        }
+        toast(toList ? "List view" : "Folder view");
+    }
+
+    /** One half of the view switch: icon plus label. */
+    private LinearLayout segment(int icon, String label, final boolean on, final boolean toList) {
+        final LinearLayout seg = new LinearLayout(act);
+        seg.setOrientation(LinearLayout.HORIZONTAL);
+        seg.setGravity(Gravity.CENTER_VERTICAL);
+        seg.setPadding(px(28), 0, px(30), 0);
+        final GradientDrawable bg = TvUi.round(on ? 0x2EFFFFFF : 0, 34);
+        seg.setBackground(bg);
+        final ImageView ic = new ImageView(act);
+        ic.setImageResource(icon);
+        ic.setColorFilter(on ? Color.WHITE : 0xFFCFCFD4, PorterDuff.Mode.SRC_IN);
+        seg.addView(ic, new LinearLayout.LayoutParams(px(32), px(32)));
+        final TextView t = TvUi.text(act, label, 27, on ? Color.WHITE : 0xFFCFCFD4, true);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
+        tp.leftMargin = px(14);
+        seg.addView(t, tp);
+        TvUi.focusable(seg, 1.06f, new TvUi.FocusChange() {
+            @Override public void onFocus(boolean f) {
+                bg.setColor(f ? Color.WHITE : on ? 0x2EFFFFFF : 0);
+                int c = f ? Color.BLACK : on ? Color.WHITE : 0xFFCFCFD4;
+                t.setTextColor(c);
+                ic.setColorFilter(c, PorterDuff.Mode.SRC_IN);
+            }
+        });
+        Runnable action = new Runnable() {
+            @Override public void run() {
+                switchFolders(toList);
+            }
+        };
+        seg.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                switchFolders(toList);
+            }
+        });
+        TvUi.pressToActivate(seg, action);
+        return seg;
+    }
+
+    private View foldersHeader() {
+        boolean asList = foldersAsList();
+        LinearLayout row = new LinearLayout(act);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setClipChildren(false);
+        row.setClipToPadding(false);
+        row.addView(heading("Folders"), new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout box = new LinearLayout(act);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(px(8), px(8), px(8), px(8));
+        box.setClipChildren(false);
+        box.setBackground(TvUi.round(0x0FFFFFFF, 46));
+        segGrid = segment(R.drawable.ic_view_grid, "Folder view", !asList, false);
+        segList = segment(R.drawable.ic_view_list, "List view", asList, true);
+        box.addView(segGrid, new LinearLayout.LayoutParams(-2, px(68)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, px(68));
+        lp.leftMargin = px(12);
+        box.addView(segList, lp);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-2, -2);
+        bp.rightMargin = px(96);
+        bp.bottomMargin = px(14);
+        row.addView(box, bp);
+        return row;
+    }
+
+    private void showFolders(int focus) {
+        ListView lv = newList();
+        lv.addHeaderView(foldersHeader(), null, false);
+        if (foldersAsList()) {
+            List<RowItem> items = new ArrayList<>();
+            for (LibraryIndex.Node n : idx.tree.sortedKids()) {
+                RowItem r = new RowItem();
+                r.folder = n;
+                r.title = n.name;
+                r.sub = folderSub(n);
+                r.art = n.children.isEmpty() && !n.all.isEmpty() ? idx.tracks.get(n.all.get(0)) : null;
+                items.add(r);
+            }
+            RowAdapter a = new RowAdapter(items, "tree", "");
+            lv.setAdapter(a);
+            adapter = a;
+            content.addView(lv, new FrameLayout.LayoutParams(-1, -1));
+            list = lv;
+            focusItem(focus, 1);
+        } else {
+            CardAdapter a = new CardAdapter(foldersCards(), false);
+            lv.setAdapter(a);
+            adapter = a;
+            content.addView(lv, new FrameLayout.LayoutParams(-1, -1));
+            list = lv;
+            focusItem(focus, COLS);
+        }
     }
 
     private void showGrid(List<Card> cards, String title, boolean circle, int focus) {
@@ -1674,6 +1799,7 @@ final class TvBrowse {
         if (r == null) return;
         if (h.detail != null) h.detail.focus = h.position;
         if (tab == SEARCH_TAB) searchFocus = h.position;
+        if (tab == 0 && stack.isEmpty() && h.detail == null) rootFocus = h.position;
         if (r.group != null) {
             open(r.groupIsAlbum ? albumDetail(r.group) : artistDetail(r.group));
         } else if (r.folder != null) {
