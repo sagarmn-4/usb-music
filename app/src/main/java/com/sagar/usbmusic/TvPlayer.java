@@ -250,20 +250,20 @@ final class TvPlayer {
         artHolder = new FrameLayout(act);
         artHolder.setClipChildren(false);
         mainCol.addView(artHolder, new LinearLayout.LayoutParams(px(440), px(440)));
-        npKick = TvUi.text(act, "", 25, 0xA6FFFFFF, true);
+        npKick = TvUi.text(act, "", 24, 0xA6FFFFFF, true);
         npKick.setLetterSpacing(0.12f);
         npKick.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams kp = new LinearLayout.LayoutParams(-1, -2);
         kp.topMargin = px(34);
         mainCol.addView(npKick, kp);
-        npTitle = TvUi.text(act, "", 68, TvUi.TEXT, true);
+        npTitle = TvUi.text(act, "", 48, TvUi.TEXT, true);
         npTitle.setSingleLine(false);
         npTitle.setMaxLines(2);
         npTitle.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams ntp = new LinearLayout.LayoutParams(-1, -2);
         ntp.topMargin = px(12);
         mainCol.addView(npTitle, ntp);
-        npArtist = TvUi.text(act, "", 42, 0xFFE0E0E4, false);
+        npArtist = TvUi.text(act, "", 32, 0xFFE0E0E4, false);
         npArtist.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams nap = new LinearLayout.LayoutParams(-1, -2);
         nap.topMargin = px(10);
@@ -818,7 +818,7 @@ final class TvPlayer {
         return true;
     }
 
-    /** Controls visible: they fade in and the song moves up; they hide again after CTL_MS. */
+    /** Controls visible: they fade in and the song moves up; they dim to 30% after CTL_MS. */
     private void showCtl() {
         ctlShown = true;
         np.removeCallbacks(hideCtlRun);
@@ -834,8 +834,8 @@ final class TvPlayer {
             hideQueuePanel(false);
             npPlay.requestFocus();
         }
-        ctlPanel.animate().alpha(0f).translationY(px(46)).setDuration(700).start();
-        mainCol.animate().translationY(px(125)).setDuration(900).start();
+        ctlPanel.animate().alpha(0.3f).translationY(0).setDuration(700).start(); // idle: stay visible, dimmed
+        mainCol.animate().translationY(0).setDuration(700).start();
     }
 
     /**
