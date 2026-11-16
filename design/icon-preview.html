@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>USB Music app icon, background options</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#18181b;color:#e6e6ea;font:16px/1.5 system-ui,Arial,sans-serif;padding:32px}
+h1{font-size:22px;margin-bottom:4px}p.s{color:#9a9aa0;margin-bottom:28px}
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1200px}
+.card{background:#212126;border-radius:16px;padding:20px}
+.card h2{font-size:16px;margin-bottom:2px}.card .n{color:#9a9aa0;font-size:13px;margin-bottom:16px}
+.stage{border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:22px;align-items:center}
+/* a stand-in for the TV home screen row, so you can judge it in context */
+.tvbg{background:linear-gradient(135deg,#2a3550,#141824)}
+.chk{background:conic-gradient(#d9d9d9 25%,#f4f4f4 0 50%,#d9d9d9 0 75%,#f4f4f4 0) 0 0/20px 20px}
+.big{width:160px;height:160px;border-radius:32px;display:grid;place-items:center}
+.ban{width:256px;height:144px;border-radius:12px;display:grid;place-items:center}
+.sm{width:64px;height:64px;border-radius:14px;display:grid;place-items:center}
+svg{fill:#4FC3F7}
+.t{background:transparent}.k{background:#000}.w{background:#fff}
+.lbl{font-size:12px;color:#8a8a90;text-align:center}
+.tv{display:flex;gap:14px;align-items:flex-end;padding:14px;border-radius:12px;background:linear-gradient(135deg,#2a3550,#141824);width:100%;justify-content:center}
+.tv .ban{width:128px;height:72px;border-radius:8px}.tv .ban svg{width:44px;height:44px}
+.tv .ban.on{outline:3px solid #fff;transform:scale(1.08)}
+</style></head><body>
+<h1>App icon: three background options</h1>
+<p class="s">Same note, same blue (#4FC3F7) as today. Only the background changes. Today's icon is a dark grey-blue (#111418).</p>
+<div class="row" id="row"></div>
+<script>
+const NOTE='<svg viewBox="0 0 24 24" width="WW" height="WW"><path d="M12,3v10.55c-0.59,-0.34 -1.27,-0.55 -2,-0.55 -2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4V7h4V3h-6z"/></svg>';
+const n=w=>NOTE.replace(/WW/g,w);
+const OPT=[
+ {c:'t',h:'1. Transparent background',d:'The note floats on whatever is behind it. The checkerboard shows the transparent area. On the TV home screen the banner tile is drawn by Android, so it shows the TV\'s own tile colour behind the note.',stage:'chk'},
+ {c:'k',h:'2. Black background',d:'Pure black tile. Matches the app\'s own black screen.',stage:'tvbg'},
+ {c:'w',h:'3. White background',d:'White tile. The blue note stays readable; the tile stands out strongly on a dark TV home screen.',stage:'tvbg'}];
+document.getElementById('row').innerHTML=OPT.map(o=>`<div class="card"><h2>${o.h}</h2><div class="n">${o.d}</div>
+<div class="stage ${o.stage}">
+ <div><div class="big ${o.c}">${n(96)}</div><div class="lbl">Launcher icon</div></div>
+ <div><div class="ban ${o.c}">${n(84)}</div><div class="lbl">TV banner (16:9)</div></div>
+ <div><div class="sm ${o.c}">${n(40)}</div><div class="lbl">Small</div></div>
+</div>
+<div class="tv" style="margin-top:14px"><div class="ban ${o.c}" style="opacity:.85">${n(44)}</div><div class="ban ${o.c} on">${n(44)}</div><div class="ban ${o.c}" style="opacity:.85">${n(44)}</div></div>
+<div class="lbl" style="margin-top:6px">In a row on the TV home screen (middle one focused)</div></div>`).join('');
+</script></body></html>
